@@ -5,17 +5,28 @@ document.addEventListener('DOMContentLoaded', () => {
         buyButton.addEventListener('click', handlePurchase);
     }
 
-    // This data should come from your HTML/DOM, but we will hardcode for now
-    const purchaseDetails = {
-        itemPrice: 4.00, // $4.00 USD
-        itemName: "Premium Website Access"
-    };
-
     /**
-     * Handles the purchase flow: sending data to the server and redirecting to Stripe.
+     * Handles the purchase flow: reading data from DOM, sending to server, and redirecting.
      */
     async function handlePurchase() {
-        console.log('Sending purchase request to server...');
+        // 🟢 FIX: Read dynamic price and name from the HTML form elements here.
+        // Assuming you have an input or data attribute with the dynamic values:
+        
+        // Placeholder for reading an element named 'product-price' and 'product-name'.
+        // REPLACE '4.00' and 'Default Product' with the actual logic to read your form inputs.
+        const itemPriceElement = document.getElementById('product-price');
+        const itemNameElement = document.getElementById('product-name');
+        
+        // If these elements don't exist, this falls back to the hardcoded default.
+        const dynamicPrice = itemPriceElement ? parseFloat(itemPriceElement.value) : 4.00;
+        const dynamicName = itemNameElement ? itemNameElement.value : "Default Product";
+
+        const purchaseDetails = {
+            itemPrice: dynamicPrice, 
+            itemName: dynamicName
+        };
+        
+        console.log(`Sending purchase request for: ${purchaseDetails.itemName} at $${purchaseDetails.itemPrice}`);
         
         try {
             const response = await fetch('/create-checkout-session', {
@@ -25,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify(purchaseDetails),
             });
-
+            // ... (rest of the handlePurchase function remains the same)
+            
             if (!response.ok) {
                 // If the server returns a 4xx or 5xx error
                 const errorData = await response.json();
@@ -42,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sessionId) {
                 console.log(`Received Stripe Session ID: ${sessionId}. Redirecting...`);
                 // --- Redirect the user to Stripe Checkout ---
-                // Note: This URL must match the Stripe setup (Test/Live)
                 window.location.href = `https://checkout.stripe.com/c/pay/${sessionId}`;
             } else {
                 // Should not happen if server code is correct
