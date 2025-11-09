@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const PORT = process.env.PORT || 3000;
-// CRITICAL: RENDER_SERVICE_URL must be set in Render ENV vars (e.g., https://my-custom-store.onrender.com)
+// CRITICAL: RENDER_SERVICE_URL must be set in Render ENV vars
 const DOMAIN = process.env.RENDER_SERVICE_URL || `http://localhost:${PORT}`; 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -27,16 +27,15 @@ if (!STRIPE_SECRET_KEY || !DISCORD_WEBHOOK_URL) {
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 const app = express();
 
-// 🟢 CRITICAL FIX: Set static path to the project root (__dirname), 
+// 🟢 FINAL FIX: Set static path to the project root (__dirname), 
 // because all files (index.html, success.html, script.js) are now in the root.
 app.use(express.static(path.join(__dirname))); 
 
 
 // --- Route 0: Render Health Check / Root endpoint ---
 // Express's static middleware will automatically serve index.html when the user 
-// navigates to the root '/'. This simple route ensures the service responds quickly.
+// navigates to the root '/'.
 app.get('/', (req, res, next) => {
-    // This passes the request to the static file handler
     next(); 
 });
 
@@ -47,7 +46,6 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
     try {
         const { itemPrice, itemName } = req.body;
         
-        // Use default values if body is empty (for robustness)
         const finalItemPrice = itemPrice || 4.00; 
         const finalItemName = itemName || "Default Product";
 
@@ -68,12 +66,10 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
                 },
             ],
             mode: 'payment',
-            // Use the DOMAIN for the correct redirect URLs
             success_url: `${DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${DOMAIN}/cancel.html`,
         });
 
-        // Send the session ID back to the client to redirect
         res.status(200).json({ sessionId: session.id, url: session.url });
 
     } catch (error) {
@@ -111,7 +107,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         try {
             // Retrieve line items to get product details
             const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-            // Safety check for item retrieval
             const item = lineItems.data.length > 0 ? lineItems.data[0] : null;
 
             const itemName = item?.description || item?.price?.product?.name || "Unknown Item";
