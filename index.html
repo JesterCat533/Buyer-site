@@ -9,12 +9,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Load PayPal SDK -->
-    <!-- CRITICAL FIX: Added data-iframe-fallback="true" to resolve "Can not read window host" errors in sandboxed environments -->
-    <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD" data-sdk-integration-source="integrationbuilder" data-iframe-fallback="true"></script>
+    <!-- CRITICAL FIX: To resolve "Can not read window host" in iframes, we ensure the minimal parameters are used 
+         and the iframe-fallback is explicitly enabled. This forces the SDK to use a secure postMessage method. -->
+    <script 
+        src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD" 
+        data-iframe-fallback="true"
+    ></script>
 
     <style>
         /* Changed font to Varela Round for a cute, rounded aesthetic */
-        @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght@400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght:400&display=swap');
         
         body {
             font-family: 'Varela Round', sans-serif;
@@ -200,10 +204,22 @@
 
     <script>
         // --- CONFIGURATION ---
+        // -----------------------------------------------------------------------------
         // !!! IMPORTANT: REPLACE THESE PLACEHOLDERS !!!
-        const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
-        const PAYPAL_CLIENT_ID = 'YOUR_PAYPAL_CLIENT_ID_HERE'; // From your PayPal Developer Dashboard
-        const PAYPAL_MERCHANT_EMAIL = 'YOUR_PAYPAL_BUSINESS_EMAIL_HERE'; // Your email linked to PayPal for receiving funds
+        // -----------------------------------------------------------------------------
+        
+        // 1. DISCORD WEBHOOK URL (For notifications)
+        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1437087889233154130/cMLy9vdMED5dPTEJizjWXvLhz9o7gUZ5ZvxNqDQqcqXntFNnt20fbvCRuhNR6C9X-O4t';
+        
+        // 2. PAYPAL CLIENT ID (MANDATORY for payments to work)
+        // Get this from your PayPal Developer Dashboard (Sandbox or Live).
+        // NOTE: The Client Secret is NOT needed for this client-side PayPal implementation.
+        const PAYPAL_CLIENT_ID = 'BAAKIau4vqChpzxkFQzc7LARC5W1ir0tvAnIvefpWiui1R0tK8O3ue3lXdPI-GRoOxYW914pVi5jdz2LF8'; 
+        
+        // 3. PAYPAL MERCHANT EMAIL (MANDATORY to receive funds)
+        // This is the email linked to your PayPal account.
+        const PAYPAL_MERCHANT_EMAIL = 'cookiethesmolbean@gmail.com'; 
+        
         const BASE_DURATION_SECONDS = 10;
         // -----------------------------------------------------------------------------
         
@@ -306,8 +322,6 @@
                             const duration = parseInt(durationInput?.value) || BASE_DURATION_SECONDS;
                             
                             // Re-apply the duration rounding logic for price integrity check
-                            // This ensures that if the input value was manually tampered with 
-                            // *after* the checkbox was checked, we still use the correct block price.
                             const correctedDuration = Math.max(BASE_DURATION_SECONDS, Math.ceil(duration / BASE_DURATION_SECONDS) * BASE_DURATION_SECONDS);
                             itemPrice = calculateVideoPrice(item, correctedDuration);
                         }
@@ -444,7 +458,10 @@
             
             // Check if PayPal is available and if buttons are already rendered
             if (typeof paypal === 'undefined') {
-                // Should only happen if the SDK failed to load
+                // If SDK failed to load, show a manual error message
+                 container.innerHTML = `<p class="text-red-500 font-bold text-center">
+                    Payment System Error: PayPal SDK failed to load. Please check the console.
+                </p>`;
                 return;
             }
 
@@ -474,7 +491,6 @@
                     // Check for zero or invalid amount
                     if (parseFloat(verifiedTotal) <= 0 || isNaN(parseFloat(verifiedTotal))) {
                         showMessage(`Price calculation error or zero total. Payment canceled.`, 'error');
-                        // Throwing an error here prevents the order creation with PayPal
                         throw new Error("Zero or invalid total detected.");
                     }
                     
@@ -486,6 +502,7 @@
                                 currency_code: 'USD'
                             },
                             payee: {
+                                // IMPORTANT: This must be your actual PayPal business email
                                 email_address: PAYPAL_MERCHANT_EMAIL 
                             },
                             custom_id: document.getElementById('customerName').value, 
@@ -548,7 +565,7 @@
          */
         async function sendDiscordNotification(order, total, contactName, contactEmail, paypalOrderId) {
             if (DISCORD_WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
-                console.error("Webhook URL is not set. Notification skipped.");
+                console.warn("Webhook URL is not set. Notification skipped. Set DISCORD_WEBHOOK_URL to enable.");
                 return;
             }
 
@@ -599,7 +616,7 @@
                 if (response.ok || response.status === 204) {
                     showMessage('Webhook notification sent successfully!', 'success');
                 } else {
-                    throw new Error(`Webhook failed with status: ${response.status}`);
+                    throw new Error(`Webhook failed with status: ${response.status}. Response: ${await response.text()}`);
                 }
             } catch (error) {
                 showMessage(`Oh noes! Webhook Notification FAILED. Check console for details.`, 'error');
@@ -712,12 +729,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             
             // IMPORTANT: Update the PayPal SDK script with your client ID
-            const paypalScript = document.querySelector('script[data-sdk-integration-source="integrationbuilder"]');
-            if (PAYPAL_CLIENT_ID !== 'YOUR_PAYPAL_CLIENT_ID_HERE') {
-                 // Replace 'sb' (Sandbox) with the actual client ID while keeping other parameters
+            const paypalScript = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');
+            
+            // Check if a valid ID is provided. If so, replace the 'sb' (Sandbox) tag in the SDK URL.
+            if (PAYPAL_CLIENT_ID && PAYPAL_CLIENT_ID !== 'YOUR_PAYPAL_CLIENT_ID_HERE') {
+                 // The SDK URL is updated to use your provided Client ID for actual transactions/testing.
                  paypalScript.src = paypalScript.src.replace('client-id=sb', `client-id=${PAYPAL_CLIENT_ID}`);
             } else {
-                 showMessage('Warning: PayPal is running in Sandbox mode. Replace PAYPAL_CLIENT_ID!', 'warning');
+                 showMessage('Warning: PayPal is running in **Sandbox** mode (using `client-id=sb`). Replace PAYPAL_CLIENT_ID in the CONFIGURATION block to use your account!', 'warning');
             }
 
             renderMenu();
