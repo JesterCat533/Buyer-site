@@ -27,8 +27,12 @@ const stripe = new Stripe(STRIPE_SECRET_KEY);
 const app = express();
 
 
-// --- Route 1: Stripe Webhook Listener (MUST be placed FIRST) ---
+// =========================================================================
+// 🟢 CRITICAL FIX: STRIPE WEBHOOK MUST BE FIRST
+// =========================================================================
 // This route uses express.raw() to get the raw body needed for signature verification.
+// Placing it FIRST ensures no other middleware interferes with the body.
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const signature = req.headers['stripe-signature'];
     let event;
@@ -42,9 +46,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         // Verify the event signature against the secret
         event = stripe.webhooks.constructEvent(req.body, signature, STRIPE_WEBHOOK_SECRET);
     } catch (err) {
-        // If verification fails, send an error back to Stripe
+        // If verification fails, send an error back to Stripe (Status 400 is expected for wrong signature)
         console.error(`Webhook signature verification failed: ${err.message}`);
-        // If the secret is wrong, it still returns a 400 error here, but the 404 from earlier will be gone.
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -69,7 +72,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
                     {
                         title: "✅ NEW PURCHASE RECEIVED",
                         description: `A new successful payment was registered!`,
-                        color: 3066993, // Green color
+                        color: 3066993, 
                         fields: [
                             { name: "Product", value: `**${itemName}**`, inline: true },
                             { name: "Amount Paid (USD)", value: `$${amountPaid}`, inline: true },
@@ -94,15 +97,17 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 }); 
 
 
-// --- Middleware: Enable JSON parsing for the Checkout route (AFTER the webhook) ---
+// =========================================================================
+// --- Middleware and Other Routes (AFTER the webhook) ---
+// =========================================================================
+
+// Enable JSON parsing for the Checkout route
 app.use(express.json());
 
-
-// --- Static Files & Root Route ---
-// 🟢 CRITICAL: Serve static files from the project root.
+// Serve static files from the project root (as confirmed)
 app.use(express.static(path.join(__dirname))); 
 
-// This passes the root request to the static file handler (index.html).
+// Root route (handled by static middleware)
 app.get('/', (req, res, next) => {
     next(); 
 });
