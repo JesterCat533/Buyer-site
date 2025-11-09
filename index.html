@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Creation Order</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="parallax-container">
+        </div>
+    <main class="content-wrapper">
+        <header>
+            <h1><span class="red-text">Custom</span> Order Portal</h1>
+        </header>
+        <section class="order-form-container">
+            <form id="order-form">
+                <div class="input-group">
+                    <label for="discord-username">Your Discord Username <span class="red-text">*</span></label>
+                    <input type="text" id="discord-username" name="discordUsername" placeholder="e.g., username#1234 or @username" required>
+                </div>
+                
+                <h2>1. Select Type</h2>
+                <div class="option-group" id="type-options">
+                    <label class="option-card" data-price="0">
+                        <input type="radio" name="itemType" value="Video" required checked>
+                        Video - starting at $5
+                    </label>
+                    <label class="option-card" data-price="0">
+                        <input type="radio" name="itemType" value="Image" required>
+                        Image - starting at $1
+                    </label>
+                </div>
+
+                <div id="dynamic-options-container">
+                    <div id="video-options" class="duration-options option-group">
+                        <h2>2. Duration</h2>
+                        <label class="option-card" data-price="5">
+                            <input type="radio" name="duration" value="1 min" checked>
+                            1 min ($5)
+                        </label>
+                        <label class="option-card" data-price="10">
+                            <input type="radio" name="duration" value="Custom" >
+                            Custom ($10 base)
+                        </label>
+                    </div>
+
+                    <div id="image-options" class="size-options option-group hidden">
+                        <h2>2. Size/Resolution</h2>
+                        <label class="option-card" data-price="1">
+                            <input type="radio" name="imageSize" value="Small" checked>
+                            Small ($1)
+                        </label>
+                        <label class="option-card" data-price="3">
+                            <input type="radio" name="imageSize" value="Medium">
+                            Medium ($3)
+                        </label>
+                         <label class="option-card" data-price="5">
+                            <input type="radio" name="imageSize" value="Large">
+                            Large ($5)
+                        </label>
+                        <label class="option-card" data-price="7">
+                            <input type="radio" name="imageSize" value="XL">
+                            XL ($7)
+                        </label>
+                        <label class="option-card" data-price="8">
+                            <input type="radio" name="imageSize" value="Super-Size">
+                            Super-Size ($8)
+                        </label>
+                    </div>
+                </div>
+
+                <h2>3. Features</h2>
+                <div class="option-group">
+                    <label class="option-card feature-option" data-price="-1">
+                        <input type="checkbox" name="feature" value="Clothed">
+                        Clothed (-$1 Discount)
+                    </label>
+                    <label class="option-card feature-option" data-price="0">
+                        <input type="checkbox" name="feature" value="Other">
+                        Other (No Cost Change)
+                    </label>
+                </div>
+
+                <h2>4. Additional Context</h2>
+                <div class="input-group">
+                    <textarea id="additional-context" name="context" rows="4" placeholder="Add any extra details or requirements for your order..."></textarea>
+                </div>
+
+                <div class="summary-box">
+                    <p class="total-price">
+                        <span class="red-text">TOTAL:</span> <span id="final-price">$5.00</span>
+                    </p>
+                    <button type="submit" id="checkout-button">
+                        <span id="button-text">Proceed to Payment</span>
+                    </button>
+                    <p class="payment-note">Secure payments via Stripe (Card) and PayPal.</p>
+                </div>
+            </form>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
