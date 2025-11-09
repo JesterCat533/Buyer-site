@@ -6,7 +6,12 @@
     <title>💖 UwU Cute Customs Shop! 💖</title>
     
     <!-- Load Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load PayPal SDK -->
+    <!-- CRITICAL FIX: Added data-iframe-fallback="true" to resolve "Can not read window host" errors in sandboxed environments -->
+    <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD" data-sdk-integration-source="integrationbuilder" data-iframe-fallback="true"></script>
+
     <style>
         /* Changed font to Varela Round for a cute, rounded aesthetic */
         @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght@400&display=swap');
@@ -178,13 +183,15 @@
                                 focus:ring-red-500 focus:border-red-500 text-base">
                     </div>
 
-                    <button type="submit" id="purchaseButton" 
-                        class="w-full py-3 px-4 border-2 border-red-500 rounded-lg shadow-lg text-xl font-medium text-white 
-                                bg-red-700 hover:bg-red-800 transition duration-150 ease-in-out disabled:opacity-50 disabled:bg-gray-700">
-                        <span id="buttonText">Send Order to Discord! ✨</span>
-                    </button>
-                    <p class="text-xs text-gray-500 mt-2 text-center">
-                        Simulated order submission, nya! No payment is processed.
+                    <!-- PayPal Button Container -->
+                    <div id="paypal-button-container" class="mt-6">
+                        <p class="text-center text-sm text-gray-500" id="paypal-message">
+                            Select items and fill contact info to enable PayPal payment.
+                        </p>
+                    </div>
+                    
+                    <p class="text-xs text-red-400 mt-2 text-center">
+                        ⚠️ **SECURITY WARNING:** Price calculation is on the client-side. For a real, secure store, this must be handled on a backend server.
                     </p>
                 </form>
             </div>
@@ -193,14 +200,14 @@
 
     <script>
         // --- CONFIGURATION ---
-        // !!! IMPORTANT: REPLACE THIS PLACEHOLDER WITH YOUR ACTUAL DISCORD WEBHOOK URL !!!
+        // !!! IMPORTANT: REPLACE THESE PLACEHOLDERS !!!
         const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
+        const PAYPAL_CLIENT_ID = 'YOUR_PAYPAL_CLIENT_ID_HERE'; // From your PayPal Developer Dashboard
+        const PAYPAL_MERCHANT_EMAIL = 'YOUR_PAYPAL_BUSINESS_EMAIL_HERE'; // Your email linked to PayPal for receiving funds
+        const BASE_DURATION_SECONDS = 10;
         // -----------------------------------------------------------------------------
         
-        const BASE_DURATION_SECONDS = 10;
-        
         // --- MENU DATA STRUCTURE ---
-        // Emojis updated to use only hearts, stars, and sparkles
         const MENU_ITEMS = {
             "Thigh Customs 💖": [
                 { id: "thigh_pic", name: "Thigh pic", basePrice: 1.00, type: "static" },
@@ -214,7 +221,7 @@
                 { id: "jo_vid", name: "Jerk off vid ⭐", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
                 { id: "cum_vid", name: "Cum vid ✨", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
             ],
-            "Ass Customs 🍑": [ // Keeping 🍑 here as it is a specific, known visual request often used in this context
+            "Ass Customs 🍑": [ 
                 { id: "covered_ass", name: "Covered ass pic", basePrice: 3.00, type: "static" },
                 { id: "bare_ass", name: "Bare ass pic", basePrice: 7.00, type: "static" },
                 { id: "anal_pic", name: "Anal pic", basePrice: 8.00, type: "static" },
@@ -224,6 +231,7 @@
         };
 
         let currentOrder = [];
+        let paypalButtonsRendered = false; // Flag to prevent multiple button renders
 
         // --- UTILITY FUNCTIONS ---
         
@@ -238,10 +246,8 @@
             if (type === 'success') {
                 messageBox.classList.add('bg-green-600');
             } else if (type === 'error') {
-                // Using red-600 for error messages (matches theme)
                 messageBox.classList.add('bg-red-600'); 
             } else {
-                // Using yellow-600 for warnings (non-theme color used sparingly for urgency)
                 messageBox.classList.add('bg-yellow-600'); 
             }
 
@@ -259,11 +265,61 @@
          * Calculates the price for a video item.
          */
         function calculateVideoPrice(item, durationSeconds) {
+            // Note: durationSeconds should already be a multiple of BASE_DURATION_SECONDS here
             const effectiveDuration = Math.max(0, durationSeconds - BASE_DURATION_SECONDS);
             const blocks = Math.ceil(effectiveDuration / BASE_DURATION_SECONDS); 
             const additionalCost = blocks * item.costPerBlock;
             return item.basePrice + additionalCost;
         }
+        
+        /**
+         * Finds item data by ID.
+         */
+        function findItemById(id) {
+            for (const category of Object.values(MENU_ITEMS)) {
+                const item = category.find(i => i.id === id);
+                if (item) return item;
+            }
+            return null;
+        }
+
+        // --- CORE LOGIC FUNCTIONS ---
+
+        /**
+         * Recalculates the total price based on the current state of all checkboxes and video inputs.
+         * This is the source of truth for the PayPal transaction.
+         */
+        function getRecalculatedTotal() {
+            let verifiedTotal = 0;
+            
+            // Loop through all categories and items
+            for (const category of Object.values(MENU_ITEMS)) {
+                for (const item of category) {
+                    const checkbox = document.getElementById(`item_${item.id}`);
+
+                    if (checkbox && checkbox.checked) {
+                        let itemPrice = item.basePrice;
+
+                        if (item.type === 'video') {
+                            const durationInput = document.getElementById(`duration_${item.id}`);
+                            // Ensure the duration is read, defaults to base if empty/invalid
+                            const duration = parseInt(durationInput?.value) || BASE_DURATION_SECONDS;
+                            
+                            // Re-apply the duration rounding logic for price integrity check
+                            // This ensures that if the input value was manually tampered with 
+                            // *after* the checkbox was checked, we still use the correct block price.
+                            const correctedDuration = Math.max(BASE_DURATION_SECONDS, Math.ceil(duration / BASE_DURATION_SECONDS) * BASE_DURATION_SECONDS);
+                            itemPrice = calculateVideoPrice(item, correctedDuration);
+                        }
+                        
+                        verifiedTotal += itemPrice;
+                    }
+                }
+            }
+            // Return to 2 decimal places for currency
+            return parseFloat(verifiedTotal.toFixed(2));
+        }
+
 
         /**
          * Toggles the selection of a menu item based on the bar click.
@@ -283,6 +339,408 @@
                  durationInput.focus();
             }
         }
+        
+        /**
+         * Updates the internal currentOrder array based on user input.
+         */
+        function updateOrder(event, itemId) {
+            const isCheckbox = event.target.type === 'checkbox';
+            const isChecked = isCheckbox ? event.target.checked : document.getElementById(`item_${itemId}`).checked;
+            const itemData = findItemById(itemId);
+            if (!itemData) return;
+
+            // Remove existing item from the order array
+            currentOrder = currentOrder.filter(orderItem => orderItem.id !== itemId);
+            
+            if (isChecked) {
+                let price = itemData.basePrice;
+                let duration = null;
+
+                if (itemData.type === 'video') {
+                    const durationInput = document.getElementById(`duration_${itemId}`);
+                    duration = parseInt(durationInput.value) || BASE_DURATION_SECONDS;
+                    
+                    // Enforce block duration
+                    if (duration < BASE_DURATION_SECONDS || duration % BASE_DURATION_SECONDS !== 0) {
+                        duration = Math.max(BASE_DURATION_SECONDS, Math.ceil(duration / BASE_DURATION_SECONDS) * BASE_DURATION_SECONDS);
+                        durationInput.value = duration;
+                        if (!isCheckbox) {
+                            showMessage('Duration corrected to a multiple of 10 seconds, nya!', 'warning');
+                        }
+                    }
+                    price = calculateVideoPrice(itemData, duration);
+                }
+                
+                currentOrder.push({ 
+                    id: itemId, 
+                    name: itemData.name, 
+                    price: price, 
+                    duration: duration 
+                });
+            } else {
+                // If unchecked, ensure video input resets to base value
+                if (itemData.type === 'video' && document.getElementById(`duration_${itemId}`)) {
+                    document.getElementById(`duration_${itemId}`).value = BASE_DURATION_SECONDS;
+                }
+            }
+
+            calculateAndRenderTotal();
+        }
+
+        /**
+         * Calculates and updates the total price, summary display, and PayPal button.
+         */
+        function calculateAndRenderTotal() {
+            // Get the total from the source of truth
+            let total = getRecalculatedTotal();
+            const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+            const orderSummary = document.getElementById('orderSummary');
+            const customerName = document.getElementById('customerName').value.trim();
+            const customerEmail = document.getElementById('customerEmail').value.trim();
+            const paypalMessage = document.getElementById('paypal-message');
+            
+            totalPriceDisplay.textContent = `$${total.toFixed(2)}`;
+            
+            // 1. Render Order Summary
+            if (currentOrder.length === 0) {
+                orderSummary.innerHTML = '<p class="text-center text-base italic text-gray-500">Select items to begin your order, senpai~</p>';
+            } else {
+                // Sort currentOrder to match the order summary rendering logic
+                const sortedOrder = [...currentOrder].sort((a, b) => a.id.localeCompare(b.id));
+
+                orderSummary.innerHTML = sortedOrder.map(item => {
+                    const durationStr = item.duration ? ` (${item.duration} sec)` : '';
+                    return `<div class="flex justify-between border-b border-gray-900 py-1 text-base">
+                                <span>${item.name}${durationStr}</span>
+                                <span class="text-red-400 font-bold">$${item.price.toFixed(2)}</span>
+                            </div>`;
+                }).join('');
+            }
+            
+            // 2. Control PayPal Button Visibility and Rendering
+            const isOrderValid = currentOrder.length > 0 && customerName.length > 0 && customerEmail.length > 0;
+
+            if (isOrderValid && total > 0) {
+                paypalMessage.style.display = 'none';
+                renderPayPalButton(total.toFixed(2));
+            } else {
+                // Clear the container if order is invalid/zero
+                document.getElementById('paypal-button-container').innerHTML = '';
+                paypalButtonsRendered = false; // Reset flag
+                paypalMessage.style.display = 'block';
+                if (currentOrder.length === 0) {
+                    paypalMessage.textContent = 'Select items to enable payment, senpai~';
+                } else {
+                    paypalMessage.textContent = 'Please fill in your name and contact info! ^_^';
+                }
+            }
+        }
+        
+        /**
+         * Renders the PayPal buttons using the SDK.
+         */
+        function renderPayPalButton(displayedTotalAmount) {
+            const container = document.getElementById('paypal-button-container');
+            
+            // Check if PayPal is available and if buttons are already rendered
+            if (typeof paypal === 'undefined') {
+                // Should only happen if the SDK failed to load
+                return;
+            }
+
+            if (paypalButtonsRendered) {
+                // Buttons are already there, nothing to do
+                return;
+            }
+
+            // Set the flag to true before rendering
+            paypalButtonsRendered = true;
+
+
+            paypal.Buttons({
+                style: {
+                    layout: 'vertical',
+                    color: 'gold', 
+                    shape: 'pill',
+                    label: 'paypal'
+                },
+                
+                // Set up the transaction (called when the button is clicked)
+                createOrder: function(data, actions) {
+                    
+                    // --- CRITICAL PRICE INTEGRITY CHECK ---
+                    const verifiedTotal = getRecalculatedTotal().toFixed(2);
+
+                    // Check for zero or invalid amount
+                    if (parseFloat(verifiedTotal) <= 0 || isNaN(parseFloat(verifiedTotal))) {
+                        showMessage(`Price calculation error or zero total. Payment canceled.`, 'error');
+                        // Throwing an error here prevents the order creation with PayPal
+                        throw new Error("Zero or invalid total detected.");
+                    }
+                    
+                    // If the check passes, proceed with order creation using the verified total
+                    return actions.order.create({
+                        purchase_units: [{
+                            amount: {
+                                value: verifiedTotal, // Use the verified total amount
+                                currency_code: 'USD'
+                            },
+                            payee: {
+                                email_address: PAYPAL_MERCHANT_EMAIL 
+                            },
+                            custom_id: document.getElementById('customerName').value, 
+                        }]
+                    });
+                },
+
+                // Finalize the transaction (called after buyer approves)
+                onApprove: function(data, actions) {
+                    return actions.order.capture().then(function(orderData) {
+                        // PAYMENT SUCCESSFUL!
+                        showMessage('Payment Approved! Preparing your custom order...', 'success');
+                        
+                        const customerName = document.getElementById('customerName').value.trim();
+                        const customerEmail = document.getElementById('customerEmail').value.trim();
+                        
+                        // We use the total from the orderData for the final webhook notification
+                        const finalPaidAmount = orderData.purchase_units[0].payments.captures[0].amount.value;
+
+                        sendDiscordNotification(
+                            currentOrder, 
+                            finalPaidAmount, 
+                            customerName, 
+                            customerEmail, 
+                            orderData.id 
+                        );
+                        
+                        // Clear the form after success
+                        document.getElementById('checkoutForm').reset();
+                        currentOrder = [];
+                        document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+                        document.querySelectorAll('.duration-input').forEach(input => { input.value = BASE_DURATION_SECONDS; });
+                        paypalButtonsRendered = false; // Reset flag
+                        calculateAndRenderTotal(); // This will clear summary and hide button
+                    });
+                },
+                
+                // Handle cancellation
+                onCancel: function (data) {
+                    showMessage('Order cancelled by user, teehee!', 'warning');
+                    console.log('Order Cancelled:', data);
+                    // Resetting the flag here ensures the button is re-rendered if the user tries again
+                    paypalButtonsRendered = false; 
+                    calculateAndRenderTotal(); 
+                },
+
+                // Handle error
+                onError: function (err) {
+                    showMessage('An error occurred during payment. Please check console.', 'error');
+                    console.error('PayPal Error:', err);
+                    // Resetting the flag here ensures the button is re-rendered if the user tries again
+                    paypalButtonsRendered = false; 
+                    calculateAndRenderTotal(); 
+                }
+            }).render('#paypal-button-container');
+        }
+
+        /**
+         * Sends a formatted message to the Discord webhook.
+         */
+        async function sendDiscordNotification(order, total, contactName, contactEmail, paypalOrderId) {
+            if (DISCORD_WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
+                console.error("Webhook URL is not set. Notification skipped.");
+                return;
+            }
+
+            const timestamp = new Date().toISOString();
+            
+            const orderFields = order.map(item => {
+                const duration = item.duration ? ` (${item.duration} sec)` : '';
+                return { 
+                    name: `🛒 ${item.name}${duration}`, 
+                    value: `Price: **$${item.price.toFixed(2)}**`, 
+                    inline: false 
+                };
+            });
+            
+            const contactFields = [
+                { name: "✨ Order Status", value: "**PAID (via PayPal)**", inline: false },
+                { name: "👤 Customer Name", value: contactName, inline: true },
+                { name: "📧 Contact Info", value: contactEmail, inline: true },
+                { name: "⭐ PayPal Order ID", value: paypalOrderId || 'N/A', inline: false },
+                ...orderFields,
+                { name: "💰 TOTAL PAID", value: `**$${total}**`, inline: false }
+            ];
+
+            const webhookData = {
+                username: "🎀 Cute Order Bot 🎀",
+                avatar_url: "https://placehold.co/100x100/dc2626/000000?text=UwU",
+                embeds: [
+                    {
+                        title: "💖 KAWAII NEW PAID CUSTOM ORDER RECEIVED! 💖",
+                        description: `A new custom request has been successfully **PAID** for a total of **$${total}**!`,
+                        color: 14766080, // Red color code
+                        fields: contactFields,
+                        footer: {
+                            text: `Order Processed at ${new Date().toLocaleTimeString()} (Eastern) ~ <3`
+                        },
+                        timestamp: timestamp
+                    }
+                ]
+            };
+
+            try {
+                const response = await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(webhookData)
+                });
+
+                if (response.ok || response.status === 204) {
+                    showMessage('Webhook notification sent successfully!', 'success');
+                } else {
+                    throw new Error(`Webhook failed with status: ${response.status}`);
+                }
+            } catch (error) {
+                showMessage(`Oh noes! Webhook Notification FAILED. Check console for details.`, 'error');
+                console.error("Error sending Discord notification:", error);
+            }
+        }
+
+
+        // --- CANVAS BACKGROUND LOGIC (UNCHANGED) ---
+        const canvas = document.getElementById('dotCanvas');
+        const ctx = canvas.getContext('2d');
+        let dots = [];
+        let mouse = { x: 0, y: 0 };
+        const DOT_COUNT = 150; 
+
+        class Dot {
+            constructor(x, y, radius, color) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.baseRadius = radius;
+                this.color = color;
+                this.parallaxDepth = Math.random() * 0.5 + 0.1; 
+                this.originalX = x;
+                this.originalY = y;
+                
+                this.driftY = Math.random() * 0.2 + 0.05; 
+                this.sineOffset = Math.random() * 100; 
+                this.glowEffect = Math.random() * Math.PI * 2; 
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = 'rgba(255, 60, 60, 0.7)'; 
+                ctx.shadowBlur = this.radius * 2; 
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            update(mouseX, mouseY) {
+                this.originalY += this.driftY;
+                this.originalX += Math.sin(Date.now() * 0.0003 + this.sineOffset) * 0.03; 
+                
+                if (this.originalY > canvas.height + this.baseRadius) {
+                    this.originalY = -this.baseRadius; 
+                    this.originalX = Math.random() * canvas.width; 
+                }
+
+                this.x = this.originalX + (mouseX - canvas.width / 2) * this.parallaxDepth * 0.05;
+                this.y = this.originalY + (mouseY - canvas.height / 2) * this.parallaxDepth * 0.05;
+
+                const dx = mouseX - this.x;
+                const dy = mouseY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const maxDistance = 150; 
+                let proximity = Math.max(0, maxDistance - distance) / maxDistance; 
+                
+                this.glowEffect += 0.05; 
+                const pulse = (Math.sin(this.glowEffect) * 0.5 + 0.5) * 0.5; 
+                
+                const maxGlowRadius = this.baseRadius * 2.5; 
+                this.radius = this.baseRadius + (maxGlowRadius - this.baseRadius) * proximity + (this.baseRadius * pulse * proximity);
+
+                const baseOpacity = 0.1 + (pulse * 0.05); 
+                this.color = proximity > 0.1 
+                    ? `rgba(255, ${Math.floor(100 + pulse * 100)}, ${Math.floor(100 + pulse * 100)}, ${0.4 + proximity * 0.6})` 
+                    : `rgba(255, 255, 255, ${baseOpacity})`;
+            }
+        }
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            dots = []; 
+            for (let i = 0; i < DOT_COUNT; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 1.5 + 0.8; 
+                dots.push(new Dot(x, y, radius, 'rgba(255, 255, 255, 0.1)'));
+            }
+        }
+        
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            ctx.shadowBlur = 0; 
+            dots.forEach(dot => {
+                dot.update(mouse.x, mouse.y);
+                dot.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('resize', () => {
+            initCanvas();
+        });
+        
+        // --- INITIALIZATION ---
+        window.toggleItemSelection = toggleItemSelection;
+        window.updateOrder = updateOrder;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // IMPORTANT: Update the PayPal SDK script with your client ID
+            const paypalScript = document.querySelector('script[data-sdk-integration-source="integrationbuilder"]');
+            if (PAYPAL_CLIENT_ID !== 'YOUR_PAYPAL_CLIENT_ID_HERE') {
+                 // Replace 'sb' (Sandbox) with the actual client ID while keeping other parameters
+                 paypalScript.src = paypalScript.src.replace('client-id=sb', `client-id=${PAYPAL_CLIENT_ID}`);
+            } else {
+                 showMessage('Warning: PayPal is running in Sandbox mode. Replace PAYPAL_CLIENT_ID!', 'warning');
+            }
+
+            renderMenu();
+            calculateAndRenderTotal();
+            
+            initCanvas();
+            animate();
+            
+            // Re-calculate total whenever contact inputs change (to enable/disable PayPal button)
+            document.getElementById('customerName').addEventListener('input', calculateAndRenderTotal);
+            document.getElementById('customerEmail').addEventListener('input', calculateAndRenderTotal);
+            
+            // Prevent default form submission (PayPal SDK handles the transaction)
+            document.getElementById('checkoutForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const total = getRecalculatedTotal();
+                if (total > 0 && document.getElementById('customerName').checkValidity() && document.getElementById('customerEmail').checkValidity()) {
+                     showMessage('You are ready to pay! Please click the PayPal button.', 'success');
+                } else {
+                     showMessage('H-hey! Please select items and fill all contact fields!', 'warning');
+                }
+            });
+        });
 
         /**
          * Renders the menu items from the data structure.
@@ -303,7 +761,6 @@
                         ? `$${item.basePrice.toFixed(2)} + $${item.costPerBlock.toFixed(2)} per ${BASE_DURATION_SECONDS} sec`
                         : `$${item.basePrice.toFixed(2)}`;
 
-                    // Menu Item Bar is now the clickable element
                     html += `
                         <div class="menu-item-bar flex flex-col md:flex-row justify-between items-start md:items-center p-3 rounded-lg bg-gray-950 transition hover:bg-red-900/40 border border-gray-800"
                              onclick="toggleItemSelection('${item.id}')">
@@ -315,7 +772,6 @@
                     `;
                     
                     if (item.type === 'video') {
-                        // Added onfocusout to the video input to prevent checkbox from toggling when clicking the input
                         html += `
                                 <input type="number" id="duration_${item.id}" min="${BASE_DURATION_SECONDS}" value="${BASE_DURATION_SECONDS}" step="${BASE_DURATION_SECONDS}" data-item-id="${item.id}" 
                                     class="w-20 text-center rounded-md bg-gray-800 border border-red-700 p-1 text-red-400 
@@ -326,7 +782,6 @@
                         `;
                     }
                     
-                    // The checkbox remains, but its click event is blocked so only the bar handles the toggle
                     html += `
                                 <input type="checkbox" id="item_${item.id}" data-item-id="${item.id}"
                                     class="custom-checkbox"
@@ -341,304 +796,6 @@
             }
             container.innerHTML = html;
         }
-
-        /**
-         * Finds item data by ID.
-         */
-        function findItemById(id) {
-            for (const category of Object.values(MENU_ITEMS)) {
-                const item = category.find(i => i.id === id);
-                if (item) return item;
-            }
-            return null;
-        }
-        
-        /**
-         * Updates the order based on checkbox and duration changes.
-         * Note: This is now called by the toggleItemSelection wrapper or directly by video duration change.
-         */
-        function updateOrder(event, itemId) {
-            const isCheckbox = event.target.type === 'checkbox';
-            const isChecked = isCheckbox ? event.target.checked : document.getElementById(`item_${itemId}`).checked;
-            const itemData = findItemById(itemId);
-            if (!itemData) return;
-
-            currentOrder = currentOrder.filter(orderItem => orderItem.id !== itemId);
-            
-            if (isChecked) {
-                let price = itemData.basePrice;
-                let duration = null;
-
-                if (itemData.type === 'video') {
-                    const durationInput = document.getElementById(`duration_${itemId}`);
-                    duration = parseInt(durationInput.value) || BASE_DURATION_SECONDS;
-                    if (duration < BASE_DURATION_SECONDS || duration % BASE_DURATION_SECONDS !== 0) {
-                        duration = Math.max(BASE_DURATION_SECONDS, Math.ceil(duration / BASE_DURATION_SECONDS) * BASE_DURATION_SECONDS);
-                        durationInput.value = duration;
-                        if (!isCheckbox) {
-                            showMessage('Duration corrected to a multiple of 10 seconds, nya!', 'warning');
-                        }
-                    }
-                    price = calculateVideoPrice(itemData, duration);
-                }
-                
-                currentOrder.push({ 
-                    id: itemId, 
-                    name: itemData.name, 
-                    price: price, 
-                    duration: duration 
-                });
-            } else {
-                // If unchecked, ensure video input resets to base value
-                if (itemData.type === 'video') {
-                    document.getElementById(`duration_${itemId}`).value = BASE_DURATION_SECONDS;
-                }
-            }
-
-            calculateAndRenderTotal();
-        }
-
-        /**
-         * Calculates and updates the total price and summary display.
-         */
-        function calculateAndRenderTotal() {
-            let total = currentOrder.reduce((sum, item) => sum + item.price, 0);
-            const totalPriceDisplay = document.getElementById('totalPriceDisplay');
-            const orderSummary = document.getElementById('orderSummary');
-            
-            totalPriceDisplay.textContent = `$${total.toFixed(2)}`;
-            
-            if (currentOrder.length === 0) {
-                orderSummary.innerHTML = '<p class="text-center text-base italic text-gray-500">Select items to begin your order, senpai~</p>';
-                document.getElementById('purchaseButton').disabled = true;
-            } else {
-                document.getElementById('purchaseButton').disabled = false;
-                orderSummary.innerHTML = currentOrder.map(item => {
-                    const durationStr = item.duration ? ` (${item.duration} sec)` : '';
-                    return `<div class="flex justify-between border-b border-gray-900 py-1 text-base">
-                                <span>${item.name}${durationStr}</span>
-                                <span class="text-red-400 font-bold">$${item.price.toFixed(2)}</span>
-                            </div>`;
-                }).join('');
-            }
-        }
-
-        /**
-         * Sends a formatted message to the Discord webhook.
-         */
-        async function sendDiscordNotification(order, total, contactName, contactEmail) {
-            if (DISCORD_WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
-                showMessage('Oh noes! Please set your DISCORD_WEBHOOK_URL in the code!', 'error');
-                console.error("Webhook URL is not set.");
-                return;
-            }
-
-            const timestamp = new Date().toISOString();
-            
-            const orderFields = order.map(item => {
-                const duration = item.duration ? ` (${item.duration} sec)` : '';
-                return { 
-                    name: `${item.name}${duration}`, 
-                    value: `$${item.price.toFixed(2)}`, 
-                    inline: false 
-                };
-            });
-            
-            const contactFields = [
-                { name: "Customer Name", value: contactName, inline: true },
-                { name: "Contact Info", value: contactEmail, inline: true },
-                ...orderFields
-            ];
-
-            const webhookData = {
-                username: "🎀 Cute Order Bot 🎀",
-                avatar_url: "https://placehold.co/100x100/dc2626/000000?text=UwU",
-                embeds: [
-                    {
-                        title: "💖 KAWAII NEW CUSTOM ORDER RECEIVED! 💖",
-                        description: `A new custom request has been submitted for a total of **$${total.toFixed(2)}**!`,
-                        color: 14766080, // Red color code
-                        fields: contactFields,
-                        footer: {
-                            text: `Order Processed at ${new Date().toLocaleTimeString()} (Eastern) ~ <3`
-                        },
-                        timestamp: timestamp
-                    }
-                ]
-            };
-
-            const buttonTextElement = document.getElementById('buttonText');
-            const button = document.getElementById('purchaseButton');
-            buttonTextElement.textContent = 'Sending...';
-            button.disabled = true;
-
-            try {
-                const response = await fetch(DISCORD_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(webhookData)
-                });
-
-                if (response.ok || response.status === 204) {
-                    showMessage('Order Sent! Check your Discord for the notification, nya!', 'success');
-                } else {
-                    throw new Error(`Webhook failed with status: ${response.status}`);
-                }
-            } catch (error) {
-                showMessage(`Oh noes! Order Submission FAILED. Check console for details.`, 'error');
-                console.error("Error sending Discord notification:", error);
-            } finally {
-                buttonTextElement.textContent = 'Send Order to Discord! ✨';
-                document.getElementById('checkoutForm').reset();
-                currentOrder = [];
-                // Manually uncheck and reset inputs
-                document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-                document.querySelectorAll('.duration-input').forEach(input => { input.value = BASE_DURATION_SECONDS; });
-                calculateAndRenderTotal();
-            }
-        }
-
-
-        // --- CANVAS BACKGROUND LOGIC ---
-        const canvas = document.getElementById('dotCanvas');
-        const ctx = canvas.getContext('2d');
-        let dots = [];
-        let mouse = { x: 0, y: 0 };
-        const DOT_COUNT = 150; 
-
-        class Dot {
-            constructor(x, y, radius, color) {
-                this.x = x;
-                this.y = y;
-                this.radius = radius;
-                this.baseRadius = radius;
-                this.color = color;
-                this.parallaxDepth = Math.random() * 0.5 + 0.1; // 0.1 (slow) to 0.6 (fast)
-                this.originalX = x;
-                this.originalY = y;
-                
-                this.driftY = Math.random() * 0.2 + 0.05; // Slower constant downward drift
-                this.sineOffset = Math.random() * 100; // For gentle wave movement
-                this.glowEffect = Math.random() * Math.PI * 2; // For pulsating glow
-            }
-
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.shadowColor = 'rgba(255, 60, 60, 0.7)'; // Brighter red glow
-                ctx.shadowBlur = this.radius * 2; // Tighter glow
-                ctx.fill();
-                ctx.closePath();
-            }
-
-            update(mouseX, mouseY) {
-                // Apply constant drift to original position
-                this.originalY += this.driftY;
-                this.originalX += Math.sin(Date.now() * 0.0003 + this.sineOffset) * 0.03; // Even slower wave
-                
-                if (this.originalY > canvas.height + this.baseRadius) {
-                    this.originalY = -this.baseRadius; // Reset to top
-                    this.originalX = Math.random() * canvas.width; // New horizontal position
-                }
-
-                // Parallax effect: Shift dot position based on mouse movement
-                this.x = this.originalX + (mouseX - canvas.width / 2) * this.parallaxDepth * 0.05;
-                this.y = this.originalY + (mouseY - canvas.height / 2) * this.parallaxDepth * 0.05;
-
-                // Glowing effect: Radius change based on distance to mouse + subtle pulse
-                const dx = mouseX - this.x;
-                const dy = mouseY - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                const maxDistance = 150; 
-                let proximity = Math.max(0, maxDistance - distance) / maxDistance; // 0 to 1
-                
-                // Add a subtle pulsating glow effect
-                this.glowEffect += 0.05; // Speed of pulse
-                const pulse = (Math.sin(this.glowEffect) * 0.5 + 0.5) * 0.5; // 0 to 0.5
-                
-                const maxGlowRadius = this.baseRadius * 2.5; // Slightly less max glow
-                this.radius = this.baseRadius + (maxGlowRadius - this.baseRadius) * proximity + (this.baseRadius * pulse * proximity);
-
-                // Color tint (make it brighter red when glowing and pulsating)
-                const baseOpacity = 0.1 + (pulse * 0.05); // Subtle baseline pulse for all
-                this.color = proximity > 0.1 
-                    ? `rgba(255, ${Math.floor(100 + pulse * 100)}, ${Math.floor(100 + pulse * 100)}, ${0.4 + proximity * 0.6})` 
-                    : `rgba(255, 255, 255, ${baseOpacity})`;
-            }
-        }
-
-        function initCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            // Clear the dots array and re-initialize to avoid duplication on resize
-            dots = []; 
-            for (let i = 0; i < DOT_COUNT; i++) {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height;
-                const radius = Math.random() * 1.5 + 0.8; // Smaller dots
-                dots.push(new Dot(x, y, radius, 'rgba(255, 255, 255, 0.1)'));
-            }
-        }
-        
-        // Main animation loop
-        function animate() {
-            // CRITICAL: Clears the canvas completely to remove star/trail marks
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            
-            ctx.shadowBlur = 0; 
-
-            dots.forEach(dot => {
-                dot.update(mouse.x, mouse.y);
-                dot.draw();
-            });
-
-            requestAnimationFrame(animate);
-        }
-
-        // Event listeners for interactivity
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-
-        window.addEventListener('resize', () => {
-            initCanvas();
-        });
-        
-        // --- INITIALIZATION ---
-        // Expose the function globally for onclick HTML attribute
-        window.toggleItemSelection = toggleItemSelection;
-        window.updateOrder = updateOrder;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderMenu();
-            calculateAndRenderTotal();
-            
-            initCanvas();
-            animate();
-            
-            document.getElementById('checkoutForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-                
-                const contactName = document.getElementById('customerName').value.trim();
-                const contactEmail = document.getElementById('customerEmail').value.trim();
-                const total = currentOrder.reduce((sum, item) => sum + item.price, 0);
-
-                if (currentOrder.length === 0) {
-                    showMessage('Eep! Please select at least one item.', 'warning');
-                    return;
-                }
-                if (!contactName || !contactEmail) {
-                    showMessage('H-hey! Please provide your name and contact info.', 'warning');
-                    return;
-                }
-                
-                sendDiscordNotification(currentOrder, total, contactName, contactEmail);
-            });
-        });
 
     </script>
 </body>
