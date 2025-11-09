@@ -5,7 +5,7 @@ import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Load environment variables for local development (Render handles these automatically)
+// Load environment variables
 dotenv.config();
 
 // Standard setup for ES Modules path resolution
@@ -16,7 +16,6 @@ const __dirname = path.dirname(__filename);
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const PORT = process.env.PORT || 3000;
-// CRITICAL: RENDER_SERVICE_URL must be set in Render ENV vars
 const DOMAIN = process.env.RENDER_SERVICE_URL || `http://localhost:${PORT}`; 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -27,60 +26,9 @@ if (!STRIPE_SECRET_KEY || !DISCORD_WEBHOOK_URL) {
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 const app = express();
 
-// 🟢 FINAL FIX: Set static path to the project root (__dirname), 
-// because all files (index.html, success.html, script.js) are now in the root.
-app.use(express.static(path.join(__dirname))); 
 
-
-// --- Route 0: Render Health Check / Root endpoint ---
-// Express's static middleware will automatically serve index.html when the user 
-// navigates to the root '/'.
-app.get('/', (req, res, next) => {
-    next(); 
-});
-
-
-// --- Route 1: Create Stripe Checkout Session ---
-// This route is called by the client-side script.js
-app.post('/create-checkout-session', express.json(), async (req, res) => {
-    try {
-        const { itemPrice, itemName } = req.body;
-        
-        const finalItemPrice = itemPrice || 4.00; 
-        const finalItemName = itemName || "Default Product";
-
-        const priceInCents = Math.round(finalItemPrice * 100);
-
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: [
-                {
-                    price_data: {
-                        currency: 'usd',
-                        product_data: {
-                            name: finalItemName,
-                        },
-                        unit_amount: priceInCents,
-                    },
-                    quantity: 1,
-                },
-            ],
-            mode: 'payment',
-            success_url: `${DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${DOMAIN}/cancel.html`,
-        });
-
-        res.status(200).json({ sessionId: session.id, url: session.url });
-
-    } catch (error) {
-        console.error('Error creating checkout session:', error);
-        res.status(500).send({ error: 'Failed to create checkout session. Check Stripe logs.' });
-    }
-}); 
-
-
-// --- Route 2: Stripe Webhook Listener ---
-// This route receives confirmed payment events from Stripe
+// --- Route 1: Stripe Webhook Listener (MUST be placed FIRST) ---
+// This route uses express.raw() to get the raw body needed for signature verification.
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const signature = req.headers['stripe-signature'];
     let event;
@@ -96,6 +44,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     } catch (err) {
         // If verification fails, send an error back to Stripe
         console.error(`Webhook signature verification failed: ${err.message}`);
+        // If the secret is wrong, it still returns a 400 error here, but the 404 from earlier will be gone.
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -142,6 +91,59 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     
     // Return a 200 to acknowledge receipt of the event
     res.json({ received: true });
+}); 
+
+
+// --- Middleware: Enable JSON parsing for the Checkout route (AFTER the webhook) ---
+app.use(express.json());
+
+
+// --- Static Files & Root Route ---
+// 🟢 CRITICAL: Serve static files from the project root.
+app.use(express.static(path.join(__dirname))); 
+
+// This passes the root request to the static file handler (index.html).
+app.get('/', (req, res, next) => {
+    next(); 
+});
+
+
+// --- Route 2: Create Stripe Checkout Session (Called by client) ---
+app.post('/create-checkout-session', async (req, res) => {
+    try {
+        // The body is parsed by app.use(express.json())
+        const { itemPrice, itemName } = req.body;
+        
+        const finalItemPrice = itemPrice || 4.00; 
+        const finalItemName = itemName || "Default Product";
+
+        const priceInCents = Math.round(finalItemPrice * 100);
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: finalItemName,
+                        },
+                        unit_amount: priceInCents,
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            success_url: `${DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${DOMAIN}/cancel.html`,
+        });
+
+        res.status(200).json({ sessionId: session.id, url: session.url });
+
+    } catch (error) {
+        console.error('Error creating checkout session:', error);
+        res.status(500).send({ error: 'Failed to create checkout session. Check Stripe logs.' });
+    }
 }); 
 
 
