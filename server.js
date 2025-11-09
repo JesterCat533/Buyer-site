@@ -62,7 +62,9 @@ app.post('/create-checkout-session', async (req, res) => {
     try {
         // Create a checkout session (for Stripe in this example)
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card', 'paypal'], // PayPal is supported by Stripe
+            // TEMP FIX: Removing 'paypal' because it is still pending activation in the Stripe dashboard.
+            // ADD 'paypal' BACK after Stripe confirms activation.
+            payment_method_types: ['card'], 
             line_items: [{
                 price_data: {
                     currency: 'usd',
