@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💖 UwU Cute Customs Shop! 💖</title>
-    <!-- Load Tailwind CSS for easy styling --><script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Changed font to Varela Round for a cute, rounded aesthetic */
         @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght@400&display=swap');
@@ -60,6 +62,46 @@
             text-shadow: 0 0 8px #ff7777, 0 0 15px #ff4444; /* Brighter, layered glow */
         }
 
+        /* Custom Checkbox Styling (Round and Themed) */
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ef4444; /* Red-500 border */
+            border-radius: 50%; /* Make it perfectly round */
+            background-color: #000000; /* Black background */
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            position: relative;
+            flex-shrink: 0; /* Prevents stretching in flex container */
+        }
+
+        .custom-checkbox:checked {
+            background-color: #ef4444; /* Red-500 fill when checked */
+            border-color: #ef4444;
+        }
+
+        /* Custom checkmark using pseudo-element */
+        .custom-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            top: 3px; 
+            left: 6px; 
+            width: 5px;
+            height: 10px;
+            border: solid #000000; /* Pure black checkmark for contrast */
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        
+        /* Style for clickable menu bar */
+        .menu-item-bar {
+            cursor: pointer;
+            user-select: none; /* Prevent text selection on click */
+        }
+
+
         /* Custom message box styling */
         .message-box {
             transition: opacity 0.3s ease-in-out;
@@ -80,13 +122,16 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <!-- Canvas for Parallax Glowing Dots --><canvas id="dotCanvas"></canvas>
+    <!-- Canvas for Parallax Glowing Dots -->
+    <canvas id="dotCanvas"></canvas>
 
-    <!-- Message/Alert Box --><div id="messageBox" class="message-box fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white opacity-0 transition-opacity hidden">
+    <!-- Message/Alert Box -->
+    <div id="messageBox" class="message-box fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white opacity-0 transition-opacity hidden">
         <p id="messageText" class="font-semibold text-base"></p>
     </div>
 
-    <!-- Main Content --><div class="content-container container mx-auto">
+    <!-- Main Content -->
+    <div class="content-container container mx-auto">
         <header class="text-center mb-10">
             <h1 class="text-5xl font-extrabold text-red-500 header-glow tracking-wider leading-tight text-gradient">
                 💖 UwU CUTE CUSTOMS MENU! 💖
@@ -97,14 +142,18 @@
         </header>
 
         <main class="grid lg:grid-cols-3 gap-8">
-            <!-- Menu Items --><div id="menuContainer" class="lg:col-span-2 space-y-8">
-                <!-- Menu categories will be injected here by JavaScript --></div>
+            <!-- Menu Items -->
+            <div id="menuContainer" class="lg:col-span-2 space-y-8">
+                <!-- Menu categories will be injected here by JavaScript -->
+            </div>
 
-            <!-- Checkout Form Card --><div class="lg:col-span-1 card p-6 rounded-xl border border-red-800 h-fit sticky top-8">
-                <h2 class="text-3xl font-bold mb-6 text-red-500 text-gradient">✨ Your Cute Order! ✨</h2>
+            <!-- Checkout Form Card -->
+            <div class="lg:col-span-1 card p-6 rounded-xl border border-red-800 h-fit sticky top-8">
+                <h2 class="text-3xl font-bold mb-6 text-red-500 text-gradient">✨ Your Cute Order! ⭐</h2>
                 
                 <div id="orderSummary" class="text-gray-400 mb-4 h-48 overflow-y-auto pr-2">
-                    <!-- Selected items will be listed here --><p class="text-center text-base italic text-gray-500">
+                    <!-- Selected items will be listed here -->
+                    <p class="text-center text-base italic text-gray-500">
                         Select items to begin your order, senpai~
                     </p>
                 </div>
@@ -146,28 +195,31 @@
         // --- CONFIGURATION ---
         // !!! IMPORTANT: REPLACE THIS PLACEHOLDER WITH YOUR ACTUAL DISCORD WEBHOOK URL !!!
         const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
+        // -----------------------------------------------------------------------------
+        
         const BASE_DURATION_SECONDS = 10;
         
         // --- MENU DATA STRUCTURE ---
+        // Emojis updated to use only hearts, stars, and sparkles
         const MENU_ITEMS = {
-            "Thigh Customs 🦵": [
+            "Thigh Customs 💖": [
                 { id: "thigh_pic", name: "Thigh pic", basePrice: 1.00, type: "static" },
                 { id: "thigh_highs", name: "Thigh pic w thigh highs", basePrice: 2.00, type: "static" },
                 { id: "thigh_writing", name: "Thigh pic w custom writing", basePrice: 3.00, type: "static" },
-                { id: "thigh_squishes", name: "Thigh squishes vid", basePrice: 5.00, costPerBlock: 1.00, type: "video" }
+                { id: "thigh_squishes", name: "Thigh squishes vid ⭐", basePrice: 5.00, costPerBlock: 1.00, type: "video" }
             ],
-            "Dick Customs 🍆": [
+            "Dick Customs ✨": [
                 { id: "bulge_pic", name: "Bulge pic", basePrice: 3.00, type: "static" },
                 { id: "dick_pic", name: "Dick pic", basePrice: 5.00, type: "static" },
-                { id: "jo_vid", name: "Jerk off vid", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
-                { id: "cum_vid", name: "Cum vid", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
+                { id: "jo_vid", name: "Jerk off vid ⭐", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
+                { id: "cum_vid", name: "Cum vid ✨", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
             ],
-            "Ass Customs 🍑": [
+            "Ass Customs 🍑": [ // Keeping 🍑 here as it is a specific, known visual request often used in this context
                 { id: "covered_ass", name: "Covered ass pic", basePrice: 3.00, type: "static" },
                 { id: "bare_ass", name: "Bare ass pic", basePrice: 7.00, type: "static" },
                 { id: "anal_pic", name: "Anal pic", basePrice: 8.00, type: "static" },
-                { id: "ass_squish_vid", name: "Ass squish vid", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
-                { id: "fingering_vid", name: "Fingering vid", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
+                { id: "ass_squish_vid", name: "Ass squish vid ⭐", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
+                { id: "fingering_vid", name: "Fingering vid ✨", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
             ]
         };
 
@@ -186,9 +238,11 @@
             if (type === 'success') {
                 messageBox.classList.add('bg-green-600');
             } else if (type === 'error') {
-                messageBox.classList.add('bg-red-600');
+                // Using red-600 for error messages (matches theme)
+                messageBox.classList.add('bg-red-600'); 
             } else {
-                messageBox.classList.add('bg-yellow-600');
+                // Using yellow-600 for warnings (non-theme color used sparingly for urgency)
+                messageBox.classList.add('bg-yellow-600'); 
             }
 
             messageText.textContent = message;
@@ -212,6 +266,25 @@
         }
 
         /**
+         * Toggles the selection of a menu item based on the bar click.
+         */
+        function toggleItemSelection(itemId) {
+            const checkbox = document.getElementById(`item_${itemId}`);
+            const durationInput = document.getElementById(`duration_${itemId}`);
+            
+            // Toggle the checkbox state
+            checkbox.checked = !checkbox.checked;
+            
+            // Manually trigger update order, passing the checkbox element
+            updateOrder({ target: checkbox }, itemId);
+            
+            // If it's a video and just got checked, focus the duration input
+            if (checkbox.checked && durationInput) {
+                 durationInput.focus();
+            }
+        }
+
+        /**
          * Renders the menu items from the data structure.
          */
         function renderMenu() {
@@ -230,8 +303,10 @@
                         ? `$${item.basePrice.toFixed(2)} + $${item.costPerBlock.toFixed(2)} per ${BASE_DURATION_SECONDS} sec`
                         : `$${item.basePrice.toFixed(2)}`;
 
+                    // Menu Item Bar is now the clickable element
                     html += `
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3 rounded-lg bg-gray-950 transition hover:bg-red-900/40 border border-gray-800">
+                        <div class="menu-item-bar flex flex-col md:flex-row justify-between items-start md:items-center p-3 rounded-lg bg-gray-950 transition hover:bg-red-900/40 border border-gray-800"
+                             onclick="toggleItemSelection('${item.id}')">
                             <div class="flex-grow">
                                 <span class="text-lg font-medium text-gray-200">${item.name}</span>
                                 <span class="block text-sm text-gray-400 md:inline md:ml-4">(${priceString})</span>
@@ -240,18 +315,23 @@
                     `;
                     
                     if (item.type === 'video') {
+                        // Added onfocusout to the video input to prevent checkbox from toggling when clicking the input
                         html += `
                                 <input type="number" id="duration_${item.id}" min="${BASE_DURATION_SECONDS}" value="${BASE_DURATION_SECONDS}" step="${BASE_DURATION_SECONDS}" data-item-id="${item.id}" 
                                     class="w-20 text-center rounded-md bg-gray-800 border border-red-700 p-1 text-red-400 
-                                        focus:ring-red-500 duration-input text-base" onchange="updateOrder(event, '${item.id}')">
+                                        focus:ring-red-500 duration-input text-base" 
+                                    onchange="updateOrder(event, '${item.id}')"
+                                    onclick="event.stopPropagation()">
                                 <span class="text-sm text-gray-400">sec</span>
                         `;
                     }
                     
+                    // The checkbox remains, but its click event is blocked so only the bar handles the toggle
                     html += `
-                                <input type="checkbox" id="item_${item.id}" data-item-id="${item.id}" onchange="updateOrder(event, '${item.id}')"
-                                    class="h-5 w-5 text-red-500 bg-gray-800 border-red-700 rounded 
-                                        focus:ring-red-500 checked:bg-red-600">
+                                <input type="checkbox" id="item_${item.id}" data-item-id="${item.id}"
+                                    class="custom-checkbox"
+                                    onchange="updateOrder(event, '${item.id}')"
+                                    onclick="event.stopPropagation()">
                             </div>
                         </div>
                     `;
@@ -275,6 +355,7 @@
         
         /**
          * Updates the order based on checkbox and duration changes.
+         * Note: This is now called by the toggleItemSelection wrapper or directly by video duration change.
          */
         function updateOrder(event, itemId) {
             const isCheckbox = event.target.type === 'checkbox';
@@ -307,6 +388,11 @@
                     price: price, 
                     duration: duration 
                 });
+            } else {
+                // If unchecked, ensure video input resets to base value
+                if (itemData.type === 'video') {
+                    document.getElementById(`duration_${itemId}`).value = BASE_DURATION_SECONDS;
+                }
             }
 
             calculateAndRenderTotal();
@@ -405,6 +491,7 @@
                 buttonTextElement.textContent = 'Send Order to Discord! ✨';
                 document.getElementById('checkoutForm').reset();
                 currentOrder = [];
+                // Manually uncheck and reset inputs
                 document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
                 document.querySelectorAll('.duration-input').forEach(input => { input.value = BASE_DURATION_SECONDS; });
                 calculateAndRenderTotal();
@@ -486,6 +573,8 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
+            // Clear the dots array and re-initialize to avoid duplication on resize
+            dots = []; 
             for (let i = 0; i < DOT_COUNT; i++) {
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
@@ -496,7 +585,8 @@
         
         // Main animation loop
         function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clears the canvas completely
+            // CRITICAL: Clears the canvas completely to remove star/trail marks
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
             
             ctx.shadowBlur = 0; 
 
@@ -519,6 +609,10 @@
         });
         
         // --- INITIALIZATION ---
+        // Expose the function globally for onclick HTML attribute
+        window.toggleItemSelection = toggleItemSelection;
+        window.updateOrder = updateOrder;
+
         document.addEventListener('DOMContentLoaded', () => {
             renderMenu();
             calculateAndRenderTotal();
