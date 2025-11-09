@@ -27,10 +27,17 @@ if (!STRIPE_SECRET_KEY || !DISCORD_WEBHOOK_URL) {
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 const app = express();
 
-// Middleware to serve static files (index.html, script.js, etc.)
-// Since server.js is in /server, we point to the parent directory to find the static files.
-app.use(express.static(path.join(__dirname, '..'))); 
-// We are now serving files from the project root, which contains index.html, script.js, etc.
+// Middleware to serve static files (index.html, script.js, success.html, etc.)
+// FIX: Using path.join(__dirname) assumes server.js is in the root and serves from the root.
+app.use(express.static(path.join(__dirname))); 
+
+// --- Route 0: Render Health Check / Root endpoint ---
+// This simple route ensures Render knows the service is up and running.
+app.get('/', (req, res) => {
+    // If the client requests the root, serve index.html (which is included in static files)
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 
 // --- Route 1: Create Stripe Checkout Session ---
 // This route is called by the client-side script.js
@@ -45,7 +52,7 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
         const priceInCents = Math.round(finalItemPrice * 100);
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'], // PayPal is disabled, keeping this safe
+            payment_method_types: ['card'],
             line_items: [
                 {
                     price_data: {
@@ -64,10 +71,7 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
             cancel_url: `${DOMAIN}/cancel.html`,
         });
 
-        // Send the session URL back to the client to redirect
-        // We send the full URL here, which is safer than just the ID if using the public key.
-        // However, since the client expects a session ID (based on the previous script.js), 
-        // we'll stick to the ID and assume the client handles the redirect URL construction.
+        // Send the session ID back to the client to redirect
         res.status(200).json({ sessionId: session.id, url: session.url });
 
     } catch (error) {
@@ -105,9 +109,10 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         try {
             // Retrieve line items to get product details
             const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-            const item = lineItems.data[0];
+            // Safety check for item retrieval
+            const item = lineItems.data.length > 0 ? lineItems.data[0] : null;
 
-            const itemName = item.description || item.price.product.name || "Unknown Item";
+            const itemName = item?.description || item?.price?.product?.name || "Unknown Item";
             const amountPaid = (session.amount_total / 100).toFixed(2);
             const customerEmail = session.customer_details?.email || "N/A";
 
@@ -146,37 +151,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 // --- Start Server ---
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Serving static files from: ${path.join(__dirname, '..')}`);
+    console.log(`Serving static files from: ${path.join(__dirname)}`);
     console.log(`Domain used for redirects: ${DOMAIN}`);
 });
-```eof
-
----
-
-## Next Steps for a Successful Deploy 🚀
-
-You need to fix two remaining issues based on your deploy logs:
-
-### 1. Update `package.json` Dependencies
-
-Your deploy failed because it couldn't find required modules (`dotenv`, etc.). You must ensure your `package.json` contains all the dependencies used in `server.js`:
-
-```json
-{
-  "name": "buy-website-server",
-  "version": "1.0.0",
-  "description": "Stripe and Discord integration server",
-  "main": "server.js",
-  "type": "module",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "axios": "^1.6.2",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "stripe": "^14.12.0"
-  },
-  "author": "",
-  "license": "ISC"
-}
