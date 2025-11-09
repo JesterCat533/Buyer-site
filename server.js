@@ -1,160 +1,133 @@
+// --- FILE: server.js ---
+
 import express from 'express';
 import Stripe from 'stripe';
-import * as dotenv from 'dotenv';
 import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Load environment variables
-dotenv.config();
-
-// Standard setup for ES Modules path resolution
+// Utility for __dirname in ES module scope
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- Configuration ---
+// --- ENVIRONMENT SETUP ---
+// NOTE: We assume environment variables are available via Render or other means
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const PORT = process.env.PORT || 3000;
-const DOMAIN = process.env.RENDER_SERVICE_URL || `http://localhost:${PORT}`; 
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
-if (!STRIPE_SECRET_KEY || !DISCORD_WEBHOOK_URL) {
-    console.error("FATAL ERROR: Stripe Secret Key or Discord Webhook URL not set in environment.");
+if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET || !DISCORD_WEBHOOK_URL) {
+    console.error("Missing critical environment variables! Check STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, or DISCORD_WEBHOOK_URL.");
 }
 
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 const app = express();
 
+// --- Middleware for JSON Parsing ---
+// NOTE: For webhooks, we must use raw body first, then apply JSON parsing only to non-webhook routes.
 
-// =========================================================================
-// 🟢 CRITICAL FIX: STRIPE WEBHOOK MUST BE FIRST
-// =========================================================================
-// This route uses express.raw() to get the raw body needed for signature verification.
-// Placing it FIRST ensures no other middleware interferes with the body.
+// 1. Webhook middleware (raw body needed for signature verification)
+app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
 
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const signature = req.headers['stripe-signature'];
     let event;
-    
-    if (!STRIPE_WEBHOOK_SECRET) {
-        console.error("STRIPE_WEBHOOK_SECRET is not set in environment variables.");
-        return res.status(500).send('Server Error: Webhook secret missing.');
-    }
 
     try {
-        // Verify the event signature against the secret
-        event = stripe.webhooks.constructEvent(req.body, signature, STRIPE_WEBHOOK_SECRET);
+        event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
     } catch (err) {
-        // If verification fails, send an error back to Stripe (Status 400 is expected for wrong signature)
-        console.error(`Webhook signature verification failed: ${err.message}`);
+        console.error(`⚠️ Webhook Error: ${err.message}`);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // Handle the event
+    // Handle the event based on type
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
-        console.log(`Checkout session completed for session ID: ${session.id}`);
+        console.log(`✅ Checkout session completed for session ID: ${session.id}`);
 
+        // --- Discord Notification Logic ---
         try {
-            // Retrieve line items to get product details
-            const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-            const item = lineItems.data.length > 0 ? lineItems.data[0] : null;
-
-            const itemName = item?.description || item?.price?.product?.name || "Unknown Item";
-            const amountPaid = (session.amount_total / 100).toFixed(2);
-            const customerEmail = session.customer_details?.email || "N/A";
-
-            // --- Send Purchase Receipt to Discord ---
-            const discordPayload = {
-                username: "Stripe Purchase Bot",
-                embeds: [
-                    {
-                        title: "✅ NEW PURCHASE RECEIVED",
-                        description: `A new successful payment was registered!`,
-                        color: 3066993, 
-                        fields: [
-                            { name: "Product", value: `**${itemName}**`, inline: true },
-                            { name: "Amount Paid (USD)", value: `$${amountPaid}`, inline: true },
-                            { name: "Customer Email", value: customerEmail, inline: false },
-                            { name: "Stripe Session ID", value: `\`${session.id}\``, inline: false },
-                        ],
-                        timestamp: new Date().toISOString(),
-                    }
-                ]
-            };
+            const amountInDollars = (session.amount_total / 100).toFixed(2);
+            const currency = session.currency.toUpperCase();
             
+            const discordPayload = {
+                username: "Stripe Custom Store Bot",
+                embeds: [{
+                    title: "✅ NEW ORDER RECEIVED (Custom Form)",
+                    description: `A new payment of **${amountInDollars} ${currency}** has been processed.`,
+                    color: 3066993, // Green
+                    fields: [
+                        { name: "Session ID", value: session.id, inline: false },
+                        { name: "Customer Email", value: session.customer_details?.email || "N/A", inline: true },
+                        { name: "Payment Status", value: session.payment_status.toUpperCase(), inline: true },
+                    ],
+                    timestamp: new Date().toISOString(),
+                }]
+            };
+
             await axios.post(DISCORD_WEBHOOK_URL, discordPayload);
             console.log('Purchase receipt sent to Discord successfully.');
 
         } catch (discordError) {
             console.error('Failed to send Discord notification:', discordError.message);
         }
-    } 
-    
-    // Return a 200 to acknowledge receipt of the event
-    res.json({ received: true });
-}); 
+    } else {
+        console.log(`Unhandled event type: ${event.type}`);
+    }
 
-
-// =========================================================================
-// --- Middleware and Other Routes (AFTER the webhook) ---
-// =========================================================================
-
-// Enable JSON parsing for the Checkout route
-app.use(express.json());
-
-// Serve static files from the project root (as confirmed)
-app.use(express.static(path.join(__dirname))); 
-
-// Root route (handled by static middleware)
-app.get('/', (req, res, next) => {
-    next(); 
+    // Return a 200 response to acknowledge receipt of the event
+    res.json({received: true});
 });
 
 
-// --- Route 2: Create Stripe Checkout Session (Called by client) ---
-app.post('/create-checkout-session', async (req, res) => {
+// 2. Standard JSON middleware for API routes
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files (index.html, etc.)
+app.use(express.static(path.join(__dirname)));
+
+
+// --- NEW API ENDPOINT: CREATE PAYMENT INTENT ---
+// This endpoint is called from the client to begin the payment process.
+app.post('/create-payment-intent', async (req, res) => {
+    const { amount, currency } = req.body; // Expect amount in cents
+    
+    // Safety check and default
+    if (!amount || amount < 50 || !currency) {
+        return res.status(400).send({ error: 'Invalid amount or currency.' });
+    }
+
     try {
-        // The body is parsed by app.use(express.json())
-        const { itemPrice, itemName } = req.body;
-        
-        const finalItemPrice = itemPrice || 4.00; 
-        const finalItemName = itemName || "Default Product";
-
-        const priceInCents = Math.round(finalItemPrice * 100);
-
-        const session = await stripe.checkout.sessions.create({
+        // Create a PaymentIntent with the order amount and currency
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount, // e.g., 400 for $4.00
+            currency: currency,
             payment_method_types: ['card'],
-            line_items: [
-                {
-                    price_data: {
-                        currency: 'usd',
-                        product_data: {
-                            name: finalItemName,
-                        },
-                        unit_amount: priceInCents,
-                    },
-                    quantity: 1,
-                },
-            ],
-            mode: 'payment',
-            success_url: `${DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${DOMAIN}/cancel.html`,
+            description: 'Custom Store Payment',
+        });
+        
+        // Send the client secret back to the client
+        res.send({
+            clientSecret: paymentIntent.client_secret,
+            publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_YourPublishableKey'
         });
 
-        res.status(200).json({ sessionId: session.id, url: session.url });
-
-    } catch (error) {
-        console.error('Error creating checkout session:', error);
-        res.status(500).send({ error: 'Failed to create checkout session. Check Stripe logs.' });
+    } catch (e) {
+        console.error('Error creating payment intent:', e.message);
+        res.status(500).send({ error: e.message });
     }
-}); 
-
-
-// --- Start Server ---
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-    console.log(`Serving static files from: ${path.join(__dirname)}`);
-    console.log(`Domain used for redirects: ${DOMAIN}`);
 });
+
+
+// --- NEW API ENDPOINT: PROCESS SUCCESS ---
+// This endpoint simulates the confirmation process after payment
+app.get('/payment-success', (req, res) => {
+    // In a real app, you would verify payment_intent_client_secret here
+    // For now, we'll just redirect to the success page.
+    res.sendFile(path.join(__dirname, 'success.html'));
+});
+
+
+// --- START SERVER ---
+app.listen(PORT, () => console.log(`Node server listening on port ${PORT}!`));
