@@ -1,34 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💖 UwU Cute Customs Shop! 💖</title>
-    
+    <title> UwU Cute Customs Shop!</title>
+
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Load PayPal SDK -->
-    <!-- CRITICAL FIX: To resolve "Can not read window host" in iframes, we ensure the minimal parameters are used 
-         and the iframe-fallback is explicitly enabled. This forces the SDK to use a secure postMessage method. -->
-    <script 
-        src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD" 
-        data-iframe-fallback="true"
-    ></script>
 
+    <!-- Custom Style Block -->
     <style>
         /* Changed font to Varela Round for a cute, rounded aesthetic */
-        @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght:400&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css?family=Varela+Round:wght:400&display=swap');
+
         body {
             font-family: 'Varela Round', sans-serif;
-            background-color: #000000; /* Pure Black Background */
+            background-color: #000000;
+            /* Pure Black Background */
             min-height: 100vh;
             overflow-x: hidden;
             color: #f7f7f7;
-            position: relative; /* Needed for absolute canvas */
+            position: relative;
         }
-        
+
         /* Canvas for background */
         #dotCanvas {
             position: fixed;
@@ -36,785 +31,664 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1; /* Keep it behind all content */
+            z-index: -1;
         }
 
         /* Container for content */
         .content-container {
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 20px;
             position: relative;
             z-index: 10;
-            padding-top: 2rem;
-            padding-bottom: 4rem;
         }
 
-        .card {
-            background-color: rgba(0, 0, 0, 0.9); /* More transparent dark card */
-            border: 1px solid #111; /* Softer border */
-            box-shadow: 0 0 20px rgba(255, 60, 60, 0.4); /* Brighter, softer red glow shadow */
-        }
-        
-        /* Gradient Text Animation */
-        .text-gradient {
-            background-image: linear-gradient(to right, #ef4444, #dc2626, #b91c1c); /* Red-500, Red-600, Red-700 */
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradientShift 4s ease-in-out infinite alternate;
+        /* Custom scrollbar for cuteness */
+        ::-webkit-scrollbar {
+            width: 12px;
+            background-color: #1a1a1a;
         }
 
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        ::-webkit-scrollbar-thumb {
+            border-radius: 10px;
+            background-color: #ff99cc;
+            /* UwU Pink */
+            border: 3px solid #1a1a1a;
         }
 
-        .header-glow {
-            text-shadow: 0 0 8px #ff7777, 0 0 15px #ff4444; /* Brighter, layered glow */
+        ::-webkit-scrollbar-track {
+            border-radius: 10px;
+            background-color: #1a1a1a;
         }
 
-        /* Custom Checkbox Styling (Round and Themed) */
-        .custom-checkbox {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #ef4444; /* Red-500 border */
-            border-radius: 50%; /* Make it perfectly round */
-            background-color: #000000; /* Black background */
+        /* Item card style */
+        .item-card {
+            transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            position: relative;
-            flex-shrink: 0; /* Prevents stretching in flex container */
+            border: 2px solid transparent;
+            /* Initial border */
         }
 
-        .custom-checkbox:checked {
-            background-color: #ef4444; /* Red-500 fill when checked */
-            border-color: #ef4444;
+        .item-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 153, 204, 0.3);
+            /* Pink glow */
         }
 
-        /* Custom checkmark using pseudo-element */
-        .custom-checkbox:checked::after {
-            content: '';
-            position: absolute;
-            top: 3px; 
-            left: 6px; 
-            width: 5px;
-            height: 10px;
-            border: solid #000000; /* Pure black checkmark for contrast */
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
-        }
-        
-        /* Style for clickable menu bar */
-        .menu-item-bar {
-            cursor: pointer;
-            user-select: none; /* Prevent text selection on click */
+        /* Custom checkout button style */
+        .checkout-button {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 153, 204, 0.6);
+            /* Pink shadow */
+            background: linear-gradient(145deg, #ff99cc, #ff66b2);
+            /* Pink gradient */
         }
 
+        .checkout-button:hover {
+            background: linear-gradient(145deg, #ff66b2, #ff99cc);
+            box-shadow: 0 6px 20px rgba(255, 153, 204, 0.8);
+            transform: translateY(-2px);
+        }
 
-        /* Custom message box styling */
-        .message-box {
-            transition: opacity 0.3s ease-in-out;
+        /* Custom pink border for selected item */
+        .item-selected {
+            border-color: #ff99cc;
+            box-shadow: 0 0 15px rgba(255, 153, 204, 0.8);
         }
-        
-        /* Custom red scrollbar for effect */
-        body::-webkit-scrollbar {
-            width: 8px;
+
+        /* Modal styling */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
         }
-        body::-webkit-scrollbar-thumb {
-            background-color: #ef4444; /* Red-500 */
-            border-radius: 4px;
-        }
-        body::-webkit-scrollbar-track {
-            background: #000;
+
+        .modal-content {
+            background-color: #1a1a1a;
+            /* Dark background */
+            border: 3px solid #ff99cc;
+            /* Pink border */
+            box-shadow: 0 10px 30px rgba(255, 153, 204, 0.8);
+            /* Strong pink glow */
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
 
-    <!-- Canvas for Parallax Glowing Dots -->
+<body class="selection:bg-pink-300 selection:text-black">
+
+    <!-- Canvas for background dots/stars -->
     <canvas id="dotCanvas"></canvas>
 
-    <!-- Message/Alert Box -->
-    <div id="messageBox" class="message-box fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white opacity-0 transition-opacity hidden">
-        <p id="messageText" class="font-semibold text-base"></p>
-    </div>
+    <!-- Main Content Container -->
+    <div class="content-container">
 
-    <!-- Main Content -->
-    <div class="content-container container mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-5xl font-extrabold text-red-500 header-glow tracking-wider leading-tight text-gradient">
-                💖 UwU CUTE CUSTOMS MENU! 💖
+        <!-- Header -->
+        <header class="py-6 border-b-2 border-pink-400/30 mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-red-400 text-center">
+                ✨ UwU Cute Customs Shop! ✨
             </h1>
-            <p class="text-lg text-gray-300 mt-4">
-                Pwease select what you'd like, teehee~
+            <p id="userIdDisplay" class="text-xs text-pink-300/70 text-center mt-2">
+                System Initializing...
             </p>
         </header>
 
-        <main class="grid lg:grid-cols-3 gap-8">
-            <!-- Menu Items -->
-            <div id="menuContainer" class="lg:col-span-2 space-y-8">
-                <!-- Menu categories will be injected here by JavaScript -->
+        <!-- Notification Message Box (for warnings/success) -->
+        <div id="messageBox" class="fixed top-5 left-1/2 -translate-x-1/2 p-4 rounded-xl shadow-2xl z-50 transition-opacity duration-500 opacity-0 hidden"
+            role="alert">
+            <div id="messageText" class="font-bold"></div>
+        </div>
+
+        <!-- Section: Available Items -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-bold text-pink-300 mb-6 text-center">Available Cute Customs</h2>
+            <div id="itemContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Item cards will be injected here by JavaScript -->
             </div>
+        </section>
 
-            <!-- Checkout Form Card -->
-            <div class="lg:col-span-1 card p-6 rounded-xl border border-red-800 h-fit sticky top-8">
-                <h2 class="text-3xl font-bold mb-6 text-red-500 text-gradient">✨ Your Cute Order! ⭐</h2>
-                
-                <div id="orderSummary" class="text-gray-400 mb-4 h-48 overflow-y-auto pr-2">
-                    <!-- Selected items will be listed here -->
-                    <p class="text-center text-base italic text-gray-500">
-                        Select items to begin your order, senpai~
-                    </p>
-                </div>
-                
-                <div class="flex justify-between items-center bg-gray-900 p-4 rounded-lg mb-6 border border-red-700">
-                    <span class="text-xl font-semibold text-gray-100">TOTAL:</span>
-                    <span id="totalPriceDisplay" class="text-4xl font-bold text-red-400 text-gradient">$0.00</span>
+        <!-- Section: Cart and Checkout -->
+        <section class="sticky bottom-0 bg-black/90 backdrop-blur-sm py-4 border-t-2 border-pink-400/30 rounded-t-xl">
+            <div class="flex flex-col md:flex-row justify-between items-center px-4">
+                <!-- Cart Summary -->
+                <div class="flex-grow mb-4 md:mb-0">
+                    <h3 class="text-2xl font-bold text-pink-300">Your Cart (<span id="cartCount">0</span> Items)</h3>
+                    <div id="cartDisplay" class="text-sm text-gray-300 min-h-[20px] max-h-[100px] overflow-y-auto pr-2">
+                        <!-- Cart items will be displayed here -->
+                        <p class="italic text-gray-500">Cart is empty.</p>
+                    </div>
                 </div>
 
-                <form id="checkoutForm">
-                    <div class="mb-4">
-                        <label for="customerName" class="block text-base font-medium text-gray-300 mb-1">Your Name</label>
-                        <input type="text" id="customerName" placeholder="Discord or Contact Name" required 
-                            class="mt-1 block w-full rounded-md bg-gray-900 border border-red-800 shadow-sm p-3 text-white 
-                                focus:ring-red-500 focus:border-red-500 text-base">
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="customerEmail" class="block text-base font-medium text-gray-300 mb-1">Your Contact Info / Email</label>
-                        <input type="text" id="customerEmail" placeholder="Email or Discord Tag" required 
-                            class="mt-1 block w-full rounded-md bg-gray-900 border border-red-800 shadow-sm p-3 text-white 
-                                focus:ring-red-500 focus:border-red-500 text-base">
-                    </div>
-
-                    <!-- PayPal Button Container -->
-                    <div id="paypal-button-container" class="mt-6">
-                        <p class="text-center text-sm text-gray-500" id="paypal-message">
-                            Select items and fill contact info to enable PayPal payment.
-                        </p>
-                    </div>
-                    
-                    <p class="text-xs text-red-400 mt-2 text-center">
-                    </p>
-                </form>
+                <!-- Total and Checkout Button -->
+                <div class="flex flex-col items-center space-y-2 md:space-y-0 md:space-x-4 md:flex-row">
+                    <p class="text-xl font-bold text-white">Total: <span id="cartTotal" class="text-green-400">$0.00</span></p>
+                    <button id="checkoutButton" onclick="handleCheckout()"
+                        class="checkout-button text-black font-extrabold py-3 px-8 rounded-full text-lg uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Checkout Now!
+                    </button>
+                </div>
             </div>
-        </main>
+        </section>
+
     </div>
 
-    <script>
-        // --- CONFIGURATION ---
-        // -----------------------------------------------------------------------------
-        // !!! IMPORTANT: REPLACE THESE PLACEHOLDERS !!!
-        // -----------------------------------------------------------------------------
-        
-        // 1. DISCORD WEBHOOK URL (For notifications)
-        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1437087889233154130/cMLy9vdMED5dPTEJizjWXvLhz9o7gUZ5ZvxNqDQqcqXntFNnt20fbvCRuhNR6C9X-O4t';
-        
-        // 2. PAYPAL CLIENT ID (MANDATORY for payments to work)
-        // Get this from your PayPal Developer Dashboard (Sandbox or Live).
-        // NOTE: The Client Secret is NOT needed for this client-side PayPal implementation.
-        const PAYPAL_CLIENT_ID = 'AdEUu5NQINcTF-Qs4WZF_P5AZn20Eq15q0IqkEQ96JPKpwmIEtOuT0sigv3UifDpbhVKtxt77wSFype_'; 
-        
-        // 3. PAYPAL MERCHANT EMAIL (MANDATORY to receive funds)
-        // This is the email linked to your PayPal account.
-        const PAYPAL_MERCHANT_EMAIL = 'sb-jpvqu47388432@business.example.com'; 
-        
-        const BASE_DURATION_SECONDS = 10;
-        // -----------------------------------------------------------------------------
-        
-        // --- MENU DATA STRUCTURE ---
-        const MENU_ITEMS = {
-            "Thigh Customs 💖": [
-                { id: "thigh_pic", name: "Thigh pic", basePrice: 1.00, type: "static" },
-                { id: "thigh_highs", name: "Thigh pic w thigh highs", basePrice: 2.00, type: "static" },
-                { id: "thigh_writing", name: "Thigh pic w custom writing", basePrice: 3.00, type: "static" },
-                { id: "thigh_squishes", name: "Thigh squishes vid ⭐", basePrice: 5.00, costPerBlock: 1.00, type: "video" }
-            ],
-            "Dick Customs ✨": [
-                { id: "bulge_pic", name: "Bulge pic", basePrice: 3.00, type: "static" },
-                { id: "dick_pic", name: "Dick pic", basePrice: 5.00, type: "static" },
-                { id: "jo_vid", name: "Jerk off vid ⭐", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
-                { id: "cum_vid", name: "Cum vid ✨", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
-            ],
-            "Ass Customs 🍑": [ 
-                { id: "covered_ass", name: "Covered ass pic", basePrice: 3.00, type: "static" },
-                { id: "bare_ass", name: "Bare ass pic", basePrice: 7.00, type: "static" },
-                { id: "anal_pic", name: "Anal pic", basePrice: 8.00, type: "static" },
-                { id: "ass_squish_vid", name: "Ass squish vid ⭐", basePrice: 10.00, costPerBlock: 2.00, type: "video" },
-                { id: "fingering_vid", name: "Fingering vid ✨", basePrice: 15.00, costPerBlock: 3.00, type: "video" }
-            ]
-        };
+    <!-- START OF CUSTOM MODALS -->
 
-        let currentOrder = [];
-        let paypalButtonsRendered = false; // Flag to prevent multiple button renders
+    <!-- 1. Payment Prompt Modal -->
+    <div id="paymentModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-content w-11/12 md:w-1/3 p-6 md:p-8 rounded-2xl text-center">
+            <h3 class="text-3xl font-extrabold text-pink-400 mb-4">Manual Payment Required!</h3>
+            <p class="text-lg text-gray-200 mb-6">
+                Please manually send the exact amount shown below to
+                <a href="https://paypal.me/CookieCutie167" target="_blank" class="text-blue-400 hover:text-blue-300 underline">
+                    https://paypal.me/CookieCutie167
+                </a>
+                to complete your purchase.
+            </p>
 
-        // --- UTILITY FUNCTIONS ---
-        
-        /**
-         * Displays a temporary, self-hiding message box.
-         */
-        function showMessage(message, type) {
+            <div class="bg-gray-800 p-4 rounded-xl mb-6 border border-pink-500/50">
+                <p class="text-2xl font-bold text-green-400">Total Amount: <span id="paymentAmount">$0.00</span></p>
+            </div>
+
+            <a id="paymentLink" target="_blank"
+                class="block w-full text-black font-extrabold py-3 px-6 rounded-full text-lg uppercase tracking-wider transition duration-300 ease-in-out mb-4"
+                style="background: linear-gradient(145deg, #ff99cc, #ff66b2);">
+                Click to Open PayPal Payment Link
+            </a>
+
+            <button onclick="handlePaymentConfirmation()"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full text-lg uppercase tracking-wider transition duration-300 ease-in-out">
+                I have paid! (Click here after sending money)
+            </button>
+            <p class="text-sm text-gray-400 mt-3">
+                <span class="font-bold text-red-400">NOTE:</span> Your purchase will be automatically cancelled if not confirmed in 10 minutes.
+            </p>
+        </div>
+    </div>
+
+    <!-- 2. Discord Confirmation Modal -->
+    <div id="successModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-content w-11/12 md:w-1/3 p-6 md:p-8 rounded-2xl text-center">
+            <h3 class="text-3xl font-extrabold text-green-400 mb-4">Purchase Successful!</h3>
+            <p class="text-lg text-gray-200 mb-6">
+                Thank you! Please enter your Discord username below so we can contact you to fulfill your custom order.
+            </p>
+
+            <input type="text" id="discordUsernameInput" placeholder="YourDiscordUsername#1234"
+                class="w-full p-3 mb-4 rounded-lg bg-gray-700 text-white border border-pink-400 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+                required>
+
+            <button onclick="submitDiscordUsername()"
+                class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-full text-lg uppercase tracking-wider transition duration-300 ease-in-out">
+                Confirm & Submit Username
+            </button>
+        </div>
+    </div>
+
+    <!-- END OF CUSTOM MODALS -->
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase variables
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.purchaseRef = null; // Stores the document reference for the current pending purchase
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+        // Constants for the new checkout system
+        window.PAYPAL_MAIL = "CookieCutie167";
+        window.PAYPAL_ME_URL = `https://paypal.me/${window.PAYPAL_MAIL}/`;
+        window.DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1437087889233154130/cMLy9vdMED5dPTEJizjWXvLhz9o7gUZ5ZvxNqDQqcqXntFNnt20fbvCRuhNR6C9X-O4t";
+        window.PURCHASE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+        // Utility to display messages
+        window.showMessage = (message, type = 'info') => {
             const messageBox = document.getElementById('messageBox');
             const messageText = document.getElementById('messageText');
+            messageText.innerText = message;
             
-            messageBox.classList.remove('bg-green-600', 'bg-red-600', 'bg-yellow-600');
-            if (type === 'success') {
-                messageBox.classList.add('bg-green-600');
-            } else if (type === 'error') {
-                messageBox.classList.add('bg-red-600'); 
-            } else {
-                messageBox.classList.add('bg-yellow-600'); 
-            }
-
-            messageText.textContent = message;
-            messageBox.classList.remove('hidden');
-            setTimeout(() => { messageBox.classList.add('opacity-100'); }, 10); 
+            // Set colors based on type
+            let bgColor = 'bg-gray-700';
+            if (type === 'success') bgColor = 'bg-green-500';
+            else if (type === 'error') bgColor = 'bg-red-500';
+            else if (type === 'warning') bgColor = 'bg-yellow-500';
+            
+            messageBox.className = `fixed top-5 left-1/2 -translate-x-1/2 p-4 rounded-xl shadow-2xl z-50 transition-opacity duration-500 ${bgColor}`;
+            messageBox.classList.remove('opacity-0', 'hidden');
 
             setTimeout(() => {
-                messageBox.classList.remove('opacity-100');
-                setTimeout(() => { messageBox.classList.add('hidden'); }, 300);
+                messageBox.classList.add('opacity-0');
+                setTimeout(() => messageBox.classList.add('hidden'), 500);
             }, 5000);
-        }
+        };
 
-        /**
-         * Calculates the price for a video item.
-         */
-        function calculateVideoPrice(item, durationSeconds) {
-            // Note: durationSeconds should already be a multiple of BASE_DURATION_SECONDS here
-            const effectiveDuration = Math.max(0, durationSeconds - BASE_DURATION_SECONDS);
-            const blocks = Math.ceil(effectiveDuration / BASE_DURATION_SECONDS); 
-            const additionalCost = blocks * item.costPerBlock;
-            return item.basePrice + additionalCost;
-        }
-        
-        /**
-         * Finds item data by ID.
-         */
-        function findItemById(id) {
-            for (const category of Object.values(MENU_ITEMS)) {
-                const item = category.find(i => i.id === id);
-                if (item) return item;
-            }
-            return null;
-        }
+        // Firebase Setup and Authentication (Guest Login)
+        window.setupFirebase = async function () {
+            try {
+                const app = initializeApp(firebaseConfig);
+                window.db = getFirestore(app);
+                window.auth = getAuth(app);
+                setLogLevel('Debug');
 
-        // --- CORE LOGIC FUNCTIONS ---
-
-        /**
-         * Recalculates the total price based on the current state of all checkboxes and video inputs.
-         * This is the source of truth for the PayPal transaction.
-         */
-        function getRecalculatedTotal() {
-            let verifiedTotal = 0;
-            
-            // Loop through all categories and items
-            for (const category of Object.values(MENU_ITEMS)) {
-                for (const item of category) {
-                    const checkbox = document.getElementById(`item_${item.id}`);
-
-                    if (checkbox && checkbox.checked) {
-                        let itemPrice = item.basePrice;
-
-                        if (item.type === 'video') {
-                            const durationInput = document.getElementById(`duration_${item.id}`);
-                            // Ensure the duration is read, defaults to base if empty/invalid
-                            const duration = parseInt(durationInput?.value) || BASE_DURATION_SECONDS;
-                            
-                            // Re-apply the duration rounding logic for price integrity check
-                            const correctedDuration = Math.max(BASE_DURATION_SECONDS, Math.ceil(duration / BASE_DURATION_SECONDS) * BASE_DURATION_SECONDS);
-                            itemPrice = calculateVideoPrice(item, correctedDuration);
-                        }
-                        
-                        verifiedTotal += itemPrice;
-                    }
-                }
-            }
-            // Return to 2 decimal places for currency
-            return parseFloat(verifiedTotal.toFixed(2));
-        }
-
-
-        /**
-         * Toggles the selection of a menu item based on the bar click.
-         */
-        function toggleItemSelection(itemId) {
-            const checkbox = document.getElementById(`item_${itemId}`);
-            const durationInput = document.getElementById(`duration_${itemId}`);
-            
-            // Toggle the checkbox state
-            checkbox.checked = !checkbox.checked;
-            
-            // Manually trigger update order, passing the checkbox element
-            updateOrder({ target: checkbox }, itemId);
-            
-            // If it's a video and just got checked, focus the duration input
-            if (checkbox.checked && durationInput) {
-                 durationInput.focus();
-            }
-        }
-        
-        /**
-         * Updates the internal currentOrder array based on user input.
-         */
-        function updateOrder(event, itemId) {
-            const isCheckbox = event.target.type === 'checkbox';
-            const isChecked = isCheckbox ? event.target.checked : document.getElementById(`item_${itemId}`).checked;
-            const itemData = findItemById(itemId);
-            if (!itemData) return;
-
-            // Remove existing item from the order array
-            currentOrder = currentOrder.filter(orderItem => orderItem.id !== itemId);
-            
-            if (isChecked) {
-                let price = itemData.basePrice;
-                let duration = null;
-
-                if (itemData.type === 'video') {
-                    const durationInput = document.getElementById(`duration_${itemId}`);
-                    duration = parseInt(durationInput.value) || BASE_DURATION_SECONDS;
-                    
-                    // Enforce block duration
-                    if (duration < BASE_DURATION_SECONDS || duration % BASE_DURATION_SECONDS !== 0) {
-                        duration = Math.max(BASE_DURATION_SECONDS, Math.ceil(duration / BASE_DURATION_SECONDS) * BASE_DURATION_SECONDS);
-                        durationInput.value = duration;
-                        if (!isCheckbox) {
-                            showMessage('Duration corrected to a multiple of 10 seconds, nya!', 'warning');
-                        }
-                    }
-                    price = calculateVideoPrice(itemData, duration);
-                }
-                
-                currentOrder.push({ 
-                    id: itemId, 
-                    name: itemData.name, 
-                    price: price, 
-                    duration: duration 
-                });
-            } else {
-                // If unchecked, ensure video input resets to base value
-                if (itemData.type === 'video' && document.getElementById(`duration_${itemId}`)) {
-                    document.getElementById(`duration_${itemId}`).value = BASE_DURATION_SECONDS;
-                }
-            }
-
-            calculateAndRenderTotal();
-        }
-
-        /**
-         * Calculates and updates the total price, summary display, and PayPal button.
-         */
-        function calculateAndRenderTotal() {
-            // Get the total from the source of truth
-            let total = getRecalculatedTotal();
-            const totalPriceDisplay = document.getElementById('totalPriceDisplay');
-            const orderSummary = document.getElementById('orderSummary');
-            const customerName = document.getElementById('customerName').value.trim();
-            const customerEmail = document.getElementById('customerEmail').value.trim();
-            const paypalMessage = document.getElementById('paypal-message');
-            
-            totalPriceDisplay.textContent = `$${total.toFixed(2)}`;
-            
-            // 1. Render Order Summary
-            if (currentOrder.length === 0) {
-                orderSummary.innerHTML = '<p class="text-center text-base italic text-gray-500">Select items to begin your order, senpai~</p>';
-            } else {
-                // Sort currentOrder to match the order summary rendering logic
-                const sortedOrder = [...currentOrder].sort((a, b) => a.id.localeCompare(b.id));
-
-                orderSummary.innerHTML = sortedOrder.map(item => {
-                    const durationStr = item.duration ? ` (${item.duration} sec)` : '';
-                    return `<div class="flex justify-between border-b border-gray-900 py-1 text-base">
-                                <span>${item.name}${durationStr}</span>
-                                <span class="text-red-400 font-bold">$${item.price.toFixed(2)}</span>
-                            </div>`;
-                }).join('');
-            }
-            
-            // 2. Control PayPal Button Visibility and Rendering
-            const isOrderValid = currentOrder.length > 0 && customerName.length > 0 && customerEmail.length > 0;
-
-            if (isOrderValid && total > 0) {
-                paypalMessage.style.display = 'none';
-                renderPayPalButton(total.toFixed(2));
-            } else {
-                // Clear the container if order is invalid/zero
-                document.getElementById('paypal-button-container').innerHTML = '';
-                paypalButtonsRendered = false; // Reset flag
-                paypalMessage.style.display = 'block';
-                if (currentOrder.length === 0) {
-                    paypalMessage.textContent = 'Select items to enable payment, senpai~';
+                // Sign in logic
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(window.auth, __initial_auth_token);
                 } else {
-                    paypalMessage.textContent = 'Please fill in your name and contact info! ^_^';
+                    await signInAnonymously(window.auth);
                 }
+
+                onAuthStateChanged(window.auth, (user) => {
+                    if (user) {
+                        window.userId = user.uid;
+                        document.getElementById('userIdDisplay').innerText = `Guest ID: ${window.userId}`;
+                        // Check if the user has a pending purchase from a previous session
+                        checkPendingPurchase();
+                    } else {
+                        console.error("Authentication failed. Cannot get user ID.");
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase setup failed:", error);
+                showMessage("Could not connect to the database. Checkout disabled.", "error");
+                document.getElementById('checkoutButton').disabled = true;
             }
         }
-        
-        /**
-         * Renders the PayPal buttons using the SDK.
-         */
-        function renderPayPalButton(displayedTotalAmount) {
-            const container = document.getElementById('paypal-button-container');
-            
-            // Check if PayPal is available and if buttons are already rendered
-            if (typeof paypal === 'undefined') {
-                // If SDK failed to load, show a manual error message
-                 container.innerHTML = `<p class="text-red-500 font-bold text-center">
-                    Payment System Error: PayPal SDK failed to load. Please check the console.
-                </p>`;
-                return;
-            }
 
-            if (paypalButtonsRendered) {
-                // Buttons are already there, nothing to do
-                return;
-            }
+        // --- DISCORD WEBHOOK LOGIC ---
+        window.sendDiscordNotification = async function (purchaseData, docId, isConfirmation = false) {
+            const statusText = isConfirmation ? "PURCHASE CONFIRMED!" : "NEW PENDING PURCHASE";
+            const color = isConfirmation ? 65280 : 16776960; // Green for confirmed, Yellow for pending
+            const details = purchaseData.cart.map(item => `- **${item.quantity}x** ${item.name} (${item.type})`).join('\n');
 
-            // Set the flag to true before rendering
-            paypalButtonsRendered = true;
-
-
-            paypal.Buttons({
-                style: {
-                    layout: 'vertical',
-                    color: 'gold', 
-                    shape: 'pill',
-                    label: 'paypal'
-                },
-                
-                // Set up the transaction (called when the button is clicked)
-                createOrder: function(data, actions) {
-                    
-                    // --- CRITICAL PRICE INTEGRITY CHECK ---
-                    const verifiedTotal = getRecalculatedTotal().toFixed(2);
-
-                    // Check for zero or invalid amount
-                    if (parseFloat(verifiedTotal) <= 0 || isNaN(parseFloat(verifiedTotal))) {
-                        showMessage(`Price calculation error or zero total. Payment canceled.`, 'error');
-                        throw new Error("Zero or invalid total detected.");
-                    }
-                    
-                    // If the check passes, proceed with order creation using the verified total
-                    return actions.order.create({
-                        purchase_units: [{
-                            amount: {
-                                value: verifiedTotal, // Use the verified total amount
-                                currency_code: 'USD'
-                            },
-                            payee: {
-                                // IMPORTANT: This must be your actual PayPal business email
-                                email_address: PAYPAL_MERCHANT_EMAIL 
-                            },
-                            custom_id: document.getElementById('customerName').value, 
-                        }]
-                    });
-                },
-
-                // Finalize the transaction (called after buyer approves)
-                onApprove: function(data, actions) {
-                    return actions.order.capture().then(function(orderData) {
-                        // PAYMENT SUCCESSFUL!
-                        showMessage('Payment Approved! Preparing your custom order...', 'success');
-                        
-                        const customerName = document.getElementById('customerName').value.trim();
-                        const customerEmail = document.getElementById('customerEmail').value.trim();
-                        
-                        // We use the total from the orderData for the final webhook notification
-                        const finalPaidAmount = orderData.purchase_units[0].payments.captures[0].amount.value;
-
-                        sendDiscordNotification(
-                            currentOrder, 
-                            finalPaidAmount, 
-                            customerName, 
-                            customerEmail, 
-                            orderData.id 
-                        );
-                        
-                        // Clear the form after success
-                        document.getElementById('checkoutForm').reset();
-                        currentOrder = [];
-                        document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-                        document.querySelectorAll('.duration-input').forEach(input => { input.value = BASE_DURATION_SECONDS; });
-                        paypalButtonsRendered = false; // Reset flag
-                        calculateAndRenderTotal(); // This will clear summary and hide button
-                    });
-                },
-                
-                // Handle cancellation
-                onCancel: function (data) {
-                    showMessage('Order cancelled by user, teehee!', 'warning');
-                    console.log('Order Cancelled:', data);
-                    // Resetting the flag here ensures the button is re-rendered if the user tries again
-                    paypalButtonsRendered = false; 
-                    calculateAndRenderTotal(); 
-                },
-
-                // Handle error
-                onError: function (err) {
-                    showMessage('An error occurred during payment. Please check console.', 'error');
-                    console.error('PayPal Error:', err);
-                    // Resetting the flag here ensures the button is re-rendered if the user tries again
-                    paypalButtonsRendered = false; 
-                    calculateAndRenderTotal(); 
-                }
-            }).render('#paypal-button-container');
-        }
-
-        /**
-         * Sends a formatted message to the Discord webhook.
-         */
-        async function sendDiscordNotification(order, total, contactName, contactEmail, paypalOrderId) {
-            if (DISCORD_WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL_HERE') {
-                console.warn("Webhook URL is not set. Notification skipped. Set DISCORD_WEBHOOK_URL to enable.");
-                return;
-            }
-
-            const timestamp = new Date().toISOString();
-            
-            const orderFields = order.map(item => {
-                const duration = item.duration ? ` (${item.duration} sec)` : '';
-                return { 
-                    name: `🛒 ${item.name}${duration}`, 
-                    value: `Price: **$${item.price.toFixed(2)}**`, 
-                    inline: false 
-                };
-            });
-            
-            const contactFields = [
-                { name: "✨ Order Status", value: "**PAID (via PayPal)**", inline: false },
-                { name: "👤 Customer Name", value: contactName, inline: true },
-                { name: "📧 Contact Info", value: contactEmail, inline: true },
-                { name: "⭐ PayPal Order ID", value: paypalOrderId || 'N/A', inline: false },
-                ...orderFields,
-                { name: "💰 TOTAL PAID", value: `**$${total}**`, inline: false }
-            ];
-
-            const webhookData = {
-                username: "🎀 Cute Order Bot 🎀",
-                avatar_url: "https://placehold.co/100x100/dc2626/000000?text=UwU",
-                embeds: [
-                    {
-                        title: "💖 KAWAII NEW PAID CUSTOM ORDER RECEIVED! 💖",
-                        description: `A new custom request has been successfully **PAID** for a total of **$${total}**!`,
-                        color: 14766080, // Red color code
-                        fields: contactFields,
-                        footer: {
-                            text: `Order Processed at ${new Date().toLocaleTimeString()} (Eastern) ~ <3`
-                        },
-                        timestamp: timestamp
-                    }
-                ]
+            const embed = {
+                title: `[${statusText}] - Order #${docId.substring(0, 8)}`,
+                color: color,
+                description: isConfirmation 
+                    ? `Order fulfilled for **$${purchaseData.totalAmount.toFixed(2)}**.\n\n**Discord User:** ${purchaseData.discordUsername}`
+                    : `Order initiated for **$${purchaseData.totalAmount.toFixed(2)}**.\n\n**Awaiting payment confirmation...**`,
+                fields: [
+                    { name: "🛒 Cart Items", value: details, inline: false },
+                    { name: "💵 Total Amount", value: `$${purchaseData.totalAmount.toFixed(2)}`, inline: true },
+                    { name: "👤 Guest ID", value: purchaseData.userId, inline: true },
+                    { name: "⏳ Expires", value: new Date(purchaseData.cleanupTimer).toLocaleString(), inline: false }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: { text: "UwU Customs Shop System" }
             };
 
             try {
-                const response = await fetch(DISCORD_WEBHOOK_URL, {
+                await fetch(window.DISCORD_WEBHOOK_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(webhookData)
+                    body: JSON.stringify({ embeds: [embed] })
                 });
+                console.log("Discord notification sent successfully.");
+            } catch (error) {
+                console.error("Failed to send Discord notification:", error);
+            }
+        };
 
-                if (response.ok || response.status === 204) {
-                    showMessage('Webhook notification sent successfully!', 'success');
-                } else {
-                    throw new Error(`Webhook failed with status: ${response.status}. Response: ${await response.text()}`);
+        // --- PENDING PURCHASE MANAGEMENT ---
+
+        // Check if the current user has a pending purchase on page load/auth complete
+        window.checkPendingPurchase = async function () {
+            if (!window.userId) return;
+
+            const purchasesColRef = collection(window.db, `artifacts/${appId}/users/${window.userId}/pending_purchases`);
+            const q = query(purchasesColRef, where("status", "==", "pending"));
+
+            try {
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    console.log("No pending purchases found for this user.");
+                    return;
+                }
+
+                // Assuming only one pending purchase per user
+                const pendingDoc = querySnapshot.docs[0];
+                window.purchaseRef = doc(window.db, pendingDoc.ref.path);
+                const pendingData = pendingDoc.data();
+
+                // Check for client-side expiration
+                if (pendingData.cleanupTimer < Date.now()) {
+                    await checkAndCleanupPurchase(pendingDoc.id);
+                    return;
+                }
+
+                // User returned with a pending payment. Show payment modal again.
+                document.getElementById('paymentAmount').innerText = `$${pendingData.totalAmount.toFixed(2)}`;
+                document.getElementById('paymentLink').href = `${window.PAYPAL_ME_URL}${pendingData.totalAmount.toFixed(2)}`;
+                document.getElementById('paymentModal').classList.remove('hidden');
+                showMessage(`Welcome back! You have a pending purchase of $${pendingData.totalAmount.toFixed(2)}. Please complete payment.`, "warning");
+                
+                // Re-start the cleanup timer
+                setTimeout(() => checkAndCleanupPurchase(pendingDoc.id), pendingData.cleanupTimer - Date.now());
+
+            } catch (error) {
+                console.error("Error checking pending purchase:", error);
+            }
+        }
+
+        // Delete purchase if time runs out
+        window.checkAndCleanupPurchase = async function (docId) {
+            if (!window.db || !window.userId) return;
+
+            const purchaseDocRef = doc(window.db, `artifacts/${appId}/users/${window.userId}/pending_purchases/${docId}`);
+
+            try {
+                const docSnap = await getDoc(purchaseDocRef);
+                if (docSnap.exists() && docSnap.data().status === 'pending') {
+                    await deleteDoc(purchaseDocRef);
+                    console.log(`Pending purchase ${docId} cleaned up due to 10-minute timeout.`);
+                    showMessage("Your pending checkout was automatically cancelled due to timeout.", "error");
+                    if (window.purchaseRef && window.purchaseRef.id === docId) {
+                         window.purchaseRef = null;
+                         document.getElementById('paymentModal').classList.add('hidden');
+                    }
                 }
             } catch (error) {
-                showMessage(`Oh noes! Webhook Notification FAILED. Check console for details.`, 'error');
-                console.error("Error sending Discord notification:", error);
+                console.error("Error during cleanup:", error);
             }
         }
 
+        // --- NEW CHECKOUT HANDLERS ---
 
-        // --- CANVAS BACKGROUND LOGIC (UNCHANGED) ---
-        const canvas = document.getElementById('dotCanvas');
-        const ctx = canvas.getContext('2d');
-        let dots = [];
-        let mouse = { x: 0, y: 0 };
-        const DOT_COUNT = 150; 
-
-        class Dot {
-            constructor(x, y, radius, color) {
-                this.x = x;
-                this.y = y;
-                this.radius = radius;
-                this.baseRadius = radius;
-                this.color = color;
-                this.parallaxDepth = Math.random() * 0.5 + 0.1; 
-                this.originalX = x;
-                this.originalY = y;
-                
-                this.driftY = Math.random() * 0.2 + 0.05; 
-                this.sineOffset = Math.random() * 100; 
-                this.glowEffect = Math.random() * Math.PI * 2; 
+        window.handleCheckout = async function () {
+            if (!window.userId || !window.db) {
+                showMessage("System initializing... Please wait a moment.", "error");
+                return;
             }
 
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.shadowColor = 'rgba(255, 60, 60, 0.7)'; 
-                ctx.shadowBlur = this.radius * 2; 
-                ctx.fill();
-                ctx.closePath();
+            const total = calculateTotal();
+            if (total === 0) {
+                showMessage("Your cart is empty! Add an item first, UwU.", "warning");
+                return;
             }
 
-            update(mouseX, mouseY) {
-                this.originalY += this.driftY;
-                this.originalX += Math.sin(Date.now() * 0.0003 + this.sineOffset) * 0.03; 
+            const cartDetails = window.cart.map(item => ({
+                name: item.name,
+                type: item.type,
+                price: item.price,
+                quantity: item.quantity
+            }));
+
+            const purchaseData = {
+                userId: window.userId,
+                totalAmount: total,
+                cart: cartDetails,
+                timestamp: serverTimestamp(),
+                status: 'pending',
+                cleanupTimer: Date.now() + window.PURCHASE_TIMEOUT_MS,
+                discordUsername: null
+            };
+
+            document.getElementById('checkoutButton').disabled = true;
+
+            try {
+                // 1. Save pending purchase to Firestore (Private collection)
+                const purchasesColRef = collection(window.db, `artifacts/${appId}/users/${window.userId}/pending_purchases`);
+                window.purchaseRef = await addDoc(purchasesColRef, purchaseData);
+
+                // 2. Send Initial Discord Webhook
+                await sendDiscordNotification(purchaseData, window.purchaseRef.id, false);
+
+                // 3. Show Payment Modal
+                document.getElementById('paymentAmount').innerText = `$${total.toFixed(2)}`;
+                document.getElementById('paymentLink').href = `${window.PAYPAL_ME_URL}${total.toFixed(2)}`;
+                document.getElementById('paymentModal').classList.remove('hidden');
+
+                // 4. Start 10-minute cleanup check
+                setTimeout(() => checkAndCleanupPurchase(window.purchaseRef.id), window.PURCHASE_TIMEOUT_MS);
                 
-                if (this.originalY > canvas.height + this.baseRadius) {
-                    this.originalY = -this.baseRadius; 
-                    this.originalX = Math.random() * canvas.width; 
+                showMessage("Purchase initiated! Please send payment now.", "info");
+
+            } catch (error) {
+                console.error("Checkout failed:", error);
+                showMessage("Checkout process failed due to a system error. Please try again.", "error");
+                if (window.purchaseRef) {
+                    await deleteDoc(window.purchaseRef);
+                    window.purchaseRef = null;
                 }
-
-                this.x = this.originalX + (mouseX - canvas.width / 2) * this.parallaxDepth * 0.05;
-                this.y = this.originalY + (mouseY - canvas.height / 2) * this.parallaxDepth * 0.05;
-
-                const dx = mouseX - this.x;
-                const dy = mouseY - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                const maxDistance = 150; 
-                let proximity = Math.max(0, maxDistance - distance) / maxDistance; 
-                
-                this.glowEffect += 0.05; 
-                const pulse = (Math.sin(this.glowEffect) * 0.5 + 0.5) * 0.5; 
-                
-                const maxGlowRadius = this.baseRadius * 2.5; 
-                this.radius = this.baseRadius + (maxGlowRadius - this.baseRadius) * proximity + (this.baseRadius * pulse * proximity);
-
-                const baseOpacity = 0.1 + (pulse * 0.05); 
-                this.color = proximity > 0.1 
-                    ? `rgba(255, ${Math.floor(100 + pulse * 100)}, ${Math.floor(100 + pulse * 100)}, ${0.4 + proximity * 0.6})` 
-                    : `rgba(255, 255, 255, ${baseOpacity})`;
+            } finally {
+                document.getElementById('checkoutButton').disabled = false;
             }
         }
 
-        function initCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            dots = []; 
-            for (let i = 0; i < DOT_COUNT; i++) {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height;
-                const radius = Math.random() * 1.5 + 0.8; 
-                dots.push(new Dot(x, y, radius, 'rgba(255, 255, 255, 0.1)'));
+        window.handlePaymentConfirmation = function () {
+            if (!window.purchaseRef) {
+                showMessage("Error: No pending purchase found.", "error");
+                return;
             }
-        }
-        
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            ctx.shadowBlur = 0; 
-            dots.forEach(dot => {
-                dot.update(mouse.x, mouse.y);
-                dot.draw();
-            });
-            requestAnimationFrame(animate);
+            // Hide payment modal, show success/discord confirmation modal
+            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('successModal').classList.remove('hidden');
         }
 
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-
-        window.addEventListener('resize', () => {
-            initCanvas();
-        });
-        
-        // --- INITIALIZATION ---
-        window.toggleItemSelection = toggleItemSelection;
-        window.updateOrder = updateOrder;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // IMPORTANT: Update the PayPal SDK script with your client ID
-            const paypalScript = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');
-            
-            // Check if a valid ID is provided. If so, replace the 'sb' (Sandbox) tag in the SDK URL.
-            if (PAYPAL_CLIENT_ID && PAYPAL_CLIENT_ID !== 'YOUR_PAYPAL_CLIENT_ID_HERE') {
-                 // The SDK URL is updated to use your provided Client ID for actual transactions/testing.
-                 paypalScript.src = paypalScript.src.replace('client-id=sb', `client-id=${PAYPAL_CLIENT_ID}`);
-            } else {
-                 showMessage('Warning: PayPal is running in **Sandbox** mode (using `client-id=sb`). Replace PAYPAL_CLIENT_ID in the CONFIGURATION block to use your account!', 'warning');
+        window.submitDiscordUsername = async function () {
+            const discordUsername = document.getElementById('discordUsernameInput').value.trim();
+            if (!discordUsername) {
+                showMessage("Please enter your Discord username to complete the order.", "warning");
+                return;
             }
 
-            renderMenu();
-            calculateAndRenderTotal();
-            
-            initCanvas();
-            animate();
-            
-            // Re-calculate total whenever contact inputs change (to enable/disable PayPal button)
-            document.getElementById('customerName').addEventListener('input', calculateAndRenderTotal);
-            document.getElementById('customerEmail').addEventListener('input', calculateAndRenderTotal);
-            
-            // Prevent default form submission (PayPal SDK handles the transaction)
-            document.getElementById('checkoutForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-                const total = getRecalculatedTotal();
-                if (total > 0 && document.getElementById('customerName').checkValidity() && document.getElementById('customerEmail').checkValidity()) {
-                     showMessage('You are ready to pay! Please click the PayPal button.', 'success');
-                } else {
-                     showMessage('H-hey! Please select items and fill all contact fields!', 'warning');
-                }
-            });
-        });
+            if (!window.purchaseRef) {
+                showMessage("Error: No pending purchase found to confirm.", "error");
+                return;
+            }
 
-        /**
-         * Renders the menu items from the data structure.
-         */
-        function renderMenu() {
-            const container = document.getElementById('menuContainer');
-            let html = '';
+            try {
+                document.getElementById('successModal').classList.add('opacity-0');
+                showMessage("Sending confirmation...", "info");
 
-            for (const [category, items] of Object.entries(MENU_ITEMS)) {
-                html += `
-                    <div class="card p-6 rounded-xl border-t-4 border-red-600">
-                        <h3 class="text-2xl font-bold mb-4 text-red-500 text-gradient">${category}</h3>
-                        <div class="space-y-4">
-                `;
-
-                items.forEach(item => {
-                    const priceString = item.type === 'video'
-                        ? `$${item.basePrice.toFixed(2)} + $${item.costPerBlock.toFixed(2)} per ${BASE_DURATION_SECONDS} sec`
-                        : `$${item.basePrice.toFixed(2)}`;
-
-                    html += `
-                        <div class="menu-item-bar flex flex-col md:flex-row justify-between items-start md:items-center p-3 rounded-lg bg-gray-950 transition hover:bg-red-900/40 border border-gray-800"
-                             onclick="toggleItemSelection('${item.id}')">
-                            <div class="flex-grow">
-                                <span class="text-lg font-medium text-gray-200">${item.name}</span>
-                                <span class="block text-sm text-gray-400 md:inline md:ml-4">(${priceString})</span>
-                            </div>
-                            <div class="flex items-center mt-2 md:mt-0 space-x-2">
-                    `;
-                    
-                    if (item.type === 'video') {
-                        html += `
-                                <input type="number" id="duration_${item.id}" min="${BASE_DURATION_SECONDS}" value="${BASE_DURATION_SECONDS}" step="${BASE_DURATION_SECONDS}" data-item-id="${item.id}" 
-                                    class="w-20 text-center rounded-md bg-gray-800 border border-red-700 p-1 text-red-400 
-                                        focus:ring-red-500 duration-input text-base" 
-                                    onchange="updateOrder(event, '${item.id}')"
-                                    onclick="event.stopPropagation()">
-                                <span class="text-sm text-gray-400">sec</span>
-                        `;
-                    }
-                    
-                    html += `
-                                <input type="checkbox" id="item_${item.id}" data-item-id="${item.id}"
-                                    class="custom-checkbox"
-                                    onchange="updateOrder(event, '${item.id}')"
-                                    onclick="event.stopPropagation()">
-                            </div>
-                        </div>
-                    `;
+                // 1. Update Firestore status and add username
+                await updateDoc(window.purchaseRef, {
+                    status: 'confirmed',
+                    discordUsername: discordUsername
                 });
 
-                html += '</div></div>';
+                // 2. Fetch the final data for the webhook (including the username)
+                const finalSnap = await getDoc(window.purchaseRef);
+                const finalData = finalSnap.data();
+
+                // 3. Send final CONFIRMATION webhook to Discord
+                await sendDiscordNotification(finalData, window.purchaseRef.id, true);
+
+                // 4. Clear cart and delete the document (final cleanup)
+                clearCart();
+                await deleteDoc(window.purchaseRef);
+                window.purchaseRef = null;
+
+                document.getElementById('successModal').classList.add('hidden');
+                document.getElementById('successModal').classList.remove('opacity-0');
+                showMessage("Order confirmed! Your Discord username has been submitted. Thank you!", "success");
+
+            } catch (error) {
+                console.error("Error submitting Discord username:", error);
+                showMessage("Confirmation failed. Please refresh and try confirming again.", "error");
             }
-            container.innerHTML = html;
         }
+
+        // Must call Firebase setup on module load
+        window.setupFirebase();
+
+    </script>
+
+
+    <!-- Original Website Script (Modified) -->
+    <script>
+        // Data structure for the items
+        const shopItems = [
+            { id: 1, name: "Pixel Art Avatar", type: "Digital Art", price: 25.00, desc: "A custom, cute pixel art portrait of your choice.", imageUrl: "https://placehold.co/100x100/ff99cc/000?text=Pixel" },
+            { id: 2, name: "Animated Emoji Pack", type: "Animation", price: 40.00, desc: "5 custom animated emojis for Discord or Twitch.", imageUrl: "https://placehold.co/100x100/ff66b2/000?text=Emoji" },
+            { id: 3, name: "Twitch Emote (Static)", type: "Digital Art", price: 15.00, desc: "One static emote for use on streaming platforms.", imageUrl: "https://placehold.co/100x100/ff3399/000?text=Emote" },
+            { id: 4, name: "Full Character Sheet", type: "Digital Art", price: 80.00, desc: "Detailed, full-body character art with three views.", imageUrl: "https://placehold.co/100x100/cc3399/000?text=Char" },
+            { id: 5, name: "Simple Banner Design", type: "Graphic Design", price: 35.00, desc: "Header/banner for social media with a cute theme.", imageUrl: "https://placehold.co/100x100/aa0066/000?text=Banner" }
+        ];
+
+        // Global cart array to hold selected items
+        window.cart = [];
+
+        // --- UTILITY FUNCTIONS ---
+
+        function calculateTotal() {
+            return window.cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        }
+
+        function updateCartDisplay() {
+            const cartDisplay = document.getElementById('cartDisplay');
+            const cartTotal = document.getElementById('cartTotal');
+            const cartCount = document.getElementById('cartCount');
+
+            if (window.cart.length === 0) {
+                cartDisplay.innerHTML = '<p class="italic text-gray-500">Cart is empty.</p>';
+                cartTotal.innerText = '$0.00';
+                cartCount.innerText = '0';
+                document.getElementById('checkoutButton').disabled = true;
+                return;
+            }
+
+            // Update item list
+            cartDisplay.innerHTML = window.cart.map(item =>
+                `<div class="flex justify-between items-center py-1">
+                    <span class="text-pink-300 font-bold">${item.quantity}x ${item.name}</span>
+                    <span class="text-white">$${(item.price * item.quantity).toFixed(2)}</span>
+                </div>`
+            ).join('');
+
+            // Update total
+            const total = calculateTotal();
+            cartTotal.innerText = `$${total.toFixed(2)}`;
+            cartCount.innerText = window.cart.reduce((count, item) => count + item.quantity, 0).toString();
+            document.getElementById('checkoutButton').disabled = false;
+        }
+
+        function clearCart() {
+            window.cart = [];
+            updateCartDisplay();
+            // Deselect all items in the UI
+            document.querySelectorAll('.item-card').forEach(card => card.classList.remove('item-selected'));
+        }
+
+        // --- CART MANIPULATION ---
+
+        function toggleCartItem(item) {
+            const index = window.cart.findIndex(i => i.id === item.id);
+            const itemCard = document.getElementById(`item-${item.id}`);
+
+            if (index > -1) {
+                // Item is already in cart, remove it
+                window.cart.splice(index, 1);
+                itemCard.classList.remove('item-selected');
+                showMessage(`${item.name} removed from cart.`, 'info');
+            } else {
+                // Item is not in cart, add it
+                window.cart.push({ ...item, quantity: 1 });
+                itemCard.classList.add('item-selected');
+                showMessage(`${item.name} added to cart!`, 'success');
+            }
+            updateCartDisplay();
+        }
+
+
+        // --- UI RENDERING ---
+
+        function renderShopItems() {
+            const container = document.getElementById('itemContainer');
+            container.innerHTML = shopItems.map(item => `
+                <div id="item-${item.id}" onclick="toggleCartItem(shopItems.find(i => i.id === ${item.id}))"
+                    class="item-card bg-gray-900 p-6 rounded-xl hover:bg-gray-800 transition duration-200">
+                    <div class="flex items-center space-x-4">
+                        <img src="${item.imageUrl}" alt="${item.name}" class="w-16 h-16 rounded-full object-cover border-2 border-pink-400">
+                        <div>
+                            <h3 class="text-xl font-extrabold text-pink-400">${item.name}</h3>
+                            <p class="text-md text-gray-300">$${item.price.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-gray-400">${item.desc}</p>
+                    <p class="mt-2 text-sm text-pink-300 font-semibold">Click to Add/Remove from Cart!</p>
+                </div>
+            `).join('');
+        }
+
+        // --- BACKGROUND CANVAS ANIMATION ---
+
+        let canvas, ctx, width, height, dots;
+        const DOT_COUNT = 100;
+
+        function initCanvas() {
+            canvas = document.getElementById('dotCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            dots = [];
+            for (let i = 0; i < DOT_COUNT; i++) {
+                dots.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    radius: Math.random() * 2 + 1,
+                    color: `rgba(255, 153, 204, ${Math.random() * 0.5 + 0.1})` // Pink
+                });
+            }
+        }
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Faint trail
+            ctx.fillRect(0, 0, width, height);
+
+            dots.forEach(dot => {
+                // Update position
+                dot.x += dot.vx;
+                dot.y += dot.vy;
+
+                // Wrap around edges
+                if (dot.x < 0) dot.x = width;
+                if (dot.x > width) dot.x = 0;
+                if (dot.y < 0) dot.y = height;
+                if (dot.y > height) dot.y = 0;
+
+                // Draw dot
+                ctx.beginPath();
+                ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+                ctx.fillStyle = dot.color;
+                ctx.fill();
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        // --- INITIALIZATION ---
+
+        window.onload = function () {
+            // Setup Shop UI
+            renderShopItems();
+            updateCartDisplay();
+            
+            // Setup Background
+            initCanvas();
+            draw();
+            
+            // NOTE: Firebase setup is handled by the <script type="module"> block
+        };
 
     </script>
 </body>
+
 </html>
