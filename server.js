@@ -27,24 +27,17 @@ if (!STRIPE_SECRET_KEY || !DISCORD_WEBHOOK_URL) {
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 const app = express();
 
-// FIX: Set static path to the 'public' folder.
-// Express will now look for index.html, script.js, success.html, etc., inside 'public'.
-app.use(express.static(path.join(__dirname, 'public'))); 
+// 🟢 CRITICAL FIX: Set static path to the project root (__dirname), 
+// because all files (index.html, success.html, script.js) are now in the root.
+app.use(express.static(path.join(__dirname))); 
 
 
 // --- Route 0: Render Health Check / Root endpoint ---
-// Since we are using express.static('public'), Express will automatically serve 
-// public/index.html when the user navigates to '/'.
-// We can remove the explicit app.get('/', ...) handler added previously, 
-// but we'll keep a basic check just in case.
+// Express's static middleware will automatically serve index.html when the user 
+// navigates to the root '/'. This simple route ensures the service responds quickly.
 app.get('/', (req, res, next) => {
-    // Check if the request is for the root path and then proceed to static handler
-    if (req.url === '/') {
-        // Express static middleware will automatically handle serving public/index.html
-        // We call next() to pass control to the static middleware.
-        return next();
-    }
-    next();
+    // This passes the request to the static file handler
+    next(); 
 });
 
 
@@ -160,6 +153,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 // --- Start Server ---
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
+    console.log(`Serving static files from: ${path.join(__dirname)}`);
     console.log(`Domain used for redirects: ${DOMAIN}`);
 });
