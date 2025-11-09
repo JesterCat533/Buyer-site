@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #000000;
+            --green: #2ecc71;
+            --dark-green: #27ae60;
+            --light-grey: #AAAAAA;
+            --white: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--black);
+            color: var(--light-grey);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .success-container {
+            background-color: rgba(10, 10, 10, 0.95);
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 25px rgba(46, 204, 113, 0.4);
+            border: 2px solid var(--dark-green);
+        }
+
+        .icon {
+            font-size: 4em;
+            color: var(--green);
+            margin-bottom: 20px;
+            /* Simple Checkmark SVG as fallback/visual element */
+            display: inline-block;
+            line-height: 1;
+        }
+        .icon svg {
+            width: 80px;
+            height: 80px;
+            stroke: var(--green);
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: stroke-draw 0.6s ease-out forwards;
+        }
+
+        @keyframes stroke-draw {
+            0% { stroke-dasharray: 0 200; stroke-dashoffset: 200; }
+            100% { stroke-dasharray: 200 0; stroke-dashoffset: 0; }
+        }
+
+        h1 {
+            color: var(--white);
+            font-weight: 700;
+            margin-top: 0;
+        }
+
+        p {
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .order-details {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-size: 0.9em;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--green);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .session-id {
+            word-break: break-all;
+            color: var(--white);
+        }
+
+        .home-button {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: var(--green);
+            color: var(--black);
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.3s, transform 0.1s;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .home-button:hover {
+            background-color: var(--dark-green);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 500px) {
+            .success-container {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="icon">
+            <svg viewBox="0 0 100 100">
+                <path d="M20,50 L40,70 L80,30" />
+            </svg>
+        </div>
+        <h1>Order Confirmed!</h1>
+        <p>Your custom creation order has been successfully processed. An order notification has been sent to the creator via Discord webhook.</p>
+
+        <p>Please check your Discord DMs for confirmation and to discuss the next steps for your custom order.</p>
+
+        <div class="order-details">
+            <span class="detail-label">Payment Reference (Session ID):</span>
+            <span id="session-id-display" class="session-id">Loading...</span>
+        </div>
+
+        <a href="/" class="home-button">Return to Order Form</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get('session_id');
+            const sessionIdDisplay = document.getElementById('session-id-display');
+
+            if (sessionId) {
+                sessionIdDisplay.textContent = sessionId;
+            } else {
+                sessionIdDisplay.textContent = 'N/A (ID not found in URL)';
+                // Fallback for a cleaner look if ID is missing
+                sessionIdDisplay.closest('.order-details').style.opacity = '0.5';
+            }
+        });
+    </script>
+</body>
+</html>
