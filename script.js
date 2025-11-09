@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sessionId) {
                 console.log(`Received Stripe Session ID: ${sessionId}. Redirecting...`);
                 // --- Redirect the user to Stripe Checkout ---
+                // Note: This URL must match the Stripe setup (Test/Live)
                 window.location.href = `https://checkout.stripe.com/c/pay/${sessionId}`;
             } else {
                 // Should not happen if server code is correct
